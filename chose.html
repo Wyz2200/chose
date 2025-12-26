@@ -2,67 +2,72 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>專業級物理抽獎機 V3.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>專業版物理照片抽獎</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; background: #1a1a1a; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; color: white; overflow: hidden; }
-        #setup-screen { position: fixed; inset: 0; background: rgba(30, 30, 30, 0.95); z-index: 1000; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
-        .list-container { width: 100%; max-width: 600px; background: #333; border-radius: 12px; padding: 20px; margin: 20px 0; }
-        .player-item { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; background: #444; padding: 10px; border-radius: 8px; }
-        .player-item img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
-        .player-item input { background: #222; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 4px; flex-grow: 1; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #121212; font-family: sans-serif; }
         
-        #leaderboard { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; width: 180px; z-index: 100; border: 1px solid #ffd700; }
-        .leader-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 14px; }
-        .leader-item img { width: 30px; height: 30px; border-radius: 50%; }
-        .rank { font-weight: bold; color: #ffd700; min-width: 20px; }
+        /* 手機版介面優化 */
+        #ui-layer { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 100; background: rgba(0,0,0,0.85); padding: 20px; 
+            border-radius: 20px; width: 85%; max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid #444;
+        }
+        
+        .btn-main { 
+            width: 100%; height: 50px; font-size: 18px; font-weight: bold;
+            background: #e91e63; color: white; border: none; border-radius: 12px;
+            margin-top: 10px; cursor: pointer;
+        }
+        .btn-main:disabled { background: #444; color: #888; }
+        
+        input[type="file"] { color: #ccc; font-size: 14px; width: 100%; }
 
-        #winner-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: #222; padding: 40px; border-radius: 24px; text-align: center; display: none; z-index: 2000; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
-        #winner-popup img { width: 180px; height: 180px; border-radius: 50%; border: 8px solid #ffd700; margin: 20px 0; }
-        
-        .btn { cursor: pointer; background: #ff4757; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 18px; font-weight: bold; transition: 0.3s; }
-        .btn:hover { background: #ff6b81; transform: scale(1.05); }
-        .btn:disabled { background: #555; cursor: not-allowed; }
+        #winner-display {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); color: white; 
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 200; text-align: center;
+        }
+        #winner-display img { 
+            width: 220px; height: 220px; border-radius: 50%; 
+            border: 8px solid #ffd700; box-shadow: 0 0 30px #ffd700;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
 
-<div id="setup-screen">
-    <h1>🎡 物理障礙抽獎賽</h1>
-    <p>上傳照片並修改名稱，準備好後點擊開始！</p>
-    <input type="file" id="upload" multiple accept="image/*" style="display: none;">
-    <button class="btn" onclick="document.getElementById('upload').click()">➕ 導入照片</button>
-    
-    <div class="list-container" id="player-list">
-        </div>
-    
-    <button class="btn" id="start-btn" disabled onclick="startRace()">🚀 釋放球體</button>
+<div id="ui-layer">
+    <div style="color: #fff; margin-bottom: 10px; text-align: center; font-weight: bold;">📸 上傳照片開始抽獎</div>
+    <input type="file" id="upload" multiple accept="image/*">
+    <button id="start-btn" class="btn-main" disabled>請先上傳照片</button>
 </div>
 
-<div id="leaderboard">
-    <div style="text-align:center; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #555;">🏆 即時領先</div>
-    <div id="leader-content"></div>
-</div>
-
-<div id="winner-popup">
-    <h1 style="margin:0">🎊 中獎者 🎊</h1>
-    <div id="winner-media"></div>
-    <h2 id="winner-name-text"></h2>
-    <button class="btn" onclick="resetGame()">重新一局</button>
+<div id="winner-display">
+    <h1 style="color: #ffd700; font-size: 40px; margin: 0;">🏆 中獎者 🏆</h1>
+    <div id="winner-img-container"></div>
+    <h2 id="winner-name" style="font-size: 28px; margin: 10px 0;"></h2>
+    <button class="btn-main" style="width: 150px;" onclick="location.reload()">重新開始</button>
 </div>
 
 <script>
     const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
 
     const WORLD_WIDTH = 600;
-    const WORLD_HEIGHT = 6500; // 超長地圖
+    const WORLD_HEIGHT = 4500; // 超長地圖增加趣味性
+    const BALL_RADIUS = 30; // 加大球體更清楚
+
     let engine, render, runner;
-    let players = []; // 存儲 {url, name, id}
+    let photoTextures = [];
     let isGameOver = false;
 
-    // 初始化物理環境
-    function initPhysics() {
+    function init() {
         engine = Engine.create();
+        
+        // 渲染器適應螢幕
         render = Render.create({
             element: document.body,
             engine: engine,
@@ -75,79 +80,102 @@
             }
         });
 
-        // 邊界
-        const walls = [
-            Bodies.rectangle(WORLD_WIDTH/2, -50, WORLD_WIDTH, 100, { isStatic: true }),
-            Bodies.rectangle(-20, WORLD_HEIGHT/2, 40, WORLD_HEIGHT, { isStatic: true }),
-            Bodies.rectangle(WORLD_WIDTH+20, WORLD_HEIGHT/2, 40, WORLD_HEIGHT, { isStatic: true }),
-            Bodies.rectangle(WORLD_WIDTH/2, WORLD_HEIGHT+25, WORLD_WIDTH, 50, { isStatic: true, label: 'goal', render: { fillStyle: '#ffd700' } })
-        ];
-
-        // 複雜機關生成器
+        const wallOptions = { isStatic: true, render: { fillStyle: '#333' } };
         const obstacles = [];
-        
-        // 1. 密集釘子區 (500-1500)
-        for(let y=500; y<1500; y+=100) {
-            for(let x=40; x<WORLD_WIDTH; x+=80) {
-                obstacles.push(Bodies.circle(x + (y%200===0?30:0), y, 6, { isStatic: true, render: {fillStyle:'#444'} }));
+
+        // 1. 防卡死邊界設計：在兩側加入三角形斜導角
+        for (let y = 200; y < WORLD_HEIGHT; y += 400) {
+            // 左邊導角
+            obstacles.push(Bodies.trapezoid(-10, y, 60, 100, 0.5, { ...wallOptions, angle: Math.PI/2 }));
+            // 右邊導角
+            obstacles.push(Bodies.trapezoid(WORLD_WIDTH + 10, y + 200, 60, 100, 0.5, { ...wallOptions, angle: -Math.PI/2 }));
+        }
+
+        // 基本牆壁
+        const leftWall = Bodies.rectangle(-10, WORLD_HEIGHT/2, 25, WORLD_HEIGHT, wallOptions);
+        const rightWall = Bodies.rectangle(WORLD_WIDTH + 10, WORLD_HEIGHT/2, 25, WORLD_HEIGHT, wallOptions);
+        const ground = Bodies.rectangle(WORLD_WIDTH/2, WORLD_HEIGHT + 20, WORLD_WIDTH, 60, { 
+            isStatic: true, label: 'finish-line', render: { fillStyle: '#ffd700' } 
+        });
+
+        // 2. 隨機釘子陣列 (避開邊界以防夾死)
+        for (let y = 400; y < WORLD_HEIGHT - 400; y += 150) {
+            const isEven = (y / 150) % 2 === 0;
+            const startX = isEven ? 80 : 120;
+            for (let x = startX; x < WORLD_WIDTH - 50; x += 100) {
+                obstacles.push(Bodies.circle(x, y, 6, { isStatic: true, render: { fillStyle: '#555' } }));
             }
         }
 
-        // 2. 旋轉扇葉區 (1800-3000)
-        for(let i=0; i<8; i++) {
-            const x = (i%2===0) ? 150 : 450;
-            const y = 1800 + (i*250);
-            const bar = Bodies.rectangle(x, y, 220, 15, { frictionAir: 0 });
-            const pivot = Constraint.create({ pointA: {x, y}, bodyB: bar, stiffness: 1, length: 0 });
+        // 3. 旋轉機關
+        for (let i = 0; i < 6; i++) {
+            const x = WORLD_WIDTH / 2 + (i % 2 === 0 ? -100 : 100);
+            const y = 1000 + (i * 550);
+            const bar = Bodies.rectangle(x, y, 180, 20, { frictionAir: 0, render: { fillStyle: '#ff9800' } });
+            const pivot = Constraint.create({ pointA: { x: x, y: y }, bodyB: bar, stiffness: 1, length: 0 });
             obstacles.push(bar, pivot);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(bar, i%2===0?0.08:-0.08));
+            Events.on(engine, 'beforeUpdate', () => { Body.setAngularVelocity(bar, 0.06); });
         }
 
-        // 3. 窄道漏斗 (3500)
-        obstacles.push(Bodies.rectangle(100, 3500, 400, 20, { isStatic: true, angle: 0.6 }));
-        obstacles.push(Bodies.rectangle(500, 3500, 400, 20, { isStatic: true, angle: -0.6 }));
-
-        // 4. 亂跳板 (4500-5500)
-        for(let i=0; i<15; i++) {
-            const x = Math.random() * WORLD_WIDTH;
-            const y = 4200 + (Math.random() * 1500);
-            obstacles.push(Bodies.rectangle(x, y, 100, 10, { isStatic: true, angle: Math.random()*Math.PI, render: {fillStyle:'#555'} }));
-        }
-
-        Composite.add(engine.world, [...walls, ...obstacles]);
+        Composite.add(engine.world, [leftWall, rightWall, ground, ...obstacles]);
         Render.run(render);
         runner = Runner.create();
         Runner.run(runner, engine);
 
-        // 鏡頭與排名邏輯
-        Events.on(render, 'beforeRender', updateGameLoop);
-        Events.on(engine, 'collisionStart', checkWinner);
+        // 鏡頭自動跟隨
+        Events.on(render, 'beforeRender', () => {
+            const balls = Composite.allBodies(engine.world).filter(b => b.label === 'player-ball');
+            if (balls.length > 0) {
+                const leadBall = balls.reduce((max, b) => b.position.y > max.position.y ? b : max, balls[0]);
+                const targetY = leadBall.position.y;
+                const viewHeight = render.options.height;
+                let minTop = Math.max(0, targetY - viewHeight * 0.4); // 讓球出現在畫面上半部
+                minTop = Math.min(minTop, WORLD_HEIGHT - viewHeight);
+
+                render.bounds.min.x = 0;
+                render.bounds.max.x = WORLD_WIDTH;
+                render.bounds.min.y = minTop;
+                render.bounds.max.y = minTop + viewHeight;
+            }
+        });
+
+        // 獲勝判斷
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach(pair => {
+                if ((pair.bodyA.label === 'finish-line' || pair.bodyB.label === 'finish-line') && !isGameOver) {
+                    const ball = pair.bodyA.label === 'player-ball' ? pair.bodyA : (pair.bodyB.label === 'player-ball' ? pair.bodyB : null);
+                    if (ball) announceWinner(ball);
+                }
+            });
+        });
     }
 
-    // 正確裁切圓形圖片 (Cover 效果)
-    async function cropToCircle(file) {
+    // 修正的正圓裁剪函式
+    async function processImage(file) {
         return new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const size = 200; // 繪製解析度
+                    const size = 200; // 使用較大尺寸確保解析度
                     canvas.width = size;
                     canvas.height = size;
                     const ctx = canvas.getContext('2d');
                     
+                    // 繪製圓形裁切面
                     ctx.beginPath();
-                    ctx.arc(size/2, size/2, size/2, 0, Math.PI*2);
+                    ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+                    ctx.closePath();
                     ctx.clip();
-
-                    // 計算 Cover 縮放
+                    
+                    // 計算縮放以填滿圓形 (Cover 效果)
                     const scale = Math.max(size / img.width, size / img.height);
-                    const x = (size / 2) - (img.width / 2) * scale;
-                    const y = (size / 2) - (img.height / 2) * scale;
+                    const x = (size - img.width * scale) / 2;
+                    const y = (size - img.height * scale) / 2;
                     ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
                     
-                    resolve(canvas.toDataURL());
+                    resolve({ url: canvas.toDataURL(), name: file.name.split('.')[0] });
                 };
                 img.src = e.target.result;
             };
@@ -155,113 +183,60 @@
         });
     }
 
-    // UI 控制
     document.getElementById('upload').addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
+        photoTextures = [];
         for (let file of files) {
-            const croppedUrl = await cropToCircle(file);
-            const player = { url: croppedUrl, name: file.name.split('.')[0], id: Date.now() + Math.random() };
-            players.push(player);
-            renderPlayerList();
+            const data = await processImage(file);
+            photoTextures.push(data);
         }
+        const btn = document.getElementById('start-btn');
+        btn.disabled = photoTextures.length === 0;
+        btn.innerText = `準備就緒！釋放 ${photoTextures.length} 顆球`;
     });
 
-    function renderPlayerList() {
-        const container = document.getElementById('player-list');
-        container.innerHTML = players.map((p, index) => `
-            <div class="player-item">
-                <img src="${p.url}">
-                <input type="text" value="${p.name}" onchange="updateName(${index}, this.value)">
-                <button onclick="removePlayer(${index})" style="background:none; border:none; color:#ff4757; cursor:pointer;">✖</button>
-            </div>
-        `).join('');
-        document.getElementById('start-btn').disabled = players.length === 0;
-    }
-
-    function updateName(index, val) { players[index].name = val; }
-    function removePlayer(index) { players.splice(index, 1); renderPlayerList(); }
-
-    function startRace() {
-        document.getElementById('setup-screen').style.display = 'none';
-        isGameOver = false;
+    document.getElementById('start-btn').addEventListener('click', () => {
+        document.getElementById('ui-layer').style.display = 'none';
         
-        players.forEach((p, i) => {
-            setTimeout(() => {
-                const ball = Bodies.circle(WORLD_WIDTH/2 + (Math.random()*60-30), 80, 28, {
-                    restitution: 0.5, friction: 0.02, label: 'ball',
-                    render: { sprite: { texture: p.url, xScale: 56/200, yScale: 56/200 } }
-                });
-                ball.pData = p; // 綁定資料
-                Composite.add(engine.world, ball);
-            }, i * 250);
-        });
-    }
-
-    function updateGameLoop() {
-        const balls = Composite.allBodies(engine.world).filter(b => b.label === 'ball');
-        if (balls.length === 0) return;
-
-        // 排名計算
-        const sorted = [...balls].sort((a, b) => b.position.y - a.position.y);
-        
-        // 更新鏡頭 (跟隨領先者)
-        const lead = sorted[0];
-        const viewHeight = render.options.height;
-        let lookAtY = Math.max(viewHeight/2, lead.position.y + 100);
-        lookAtY = Math.min(lookAtY, WORLD_HEIGHT - viewHeight/2);
-
-        render.bounds.min.y = lookAtY - viewHeight/2;
-        render.bounds.max.y = lookAtY + viewHeight/2;
-        render.bounds.min.x = 0;
-        render.bounds.max.x = WORLD_WIDTH;
-
-        // 更新領先看板
-        const board = document.getElementById('leader-content');
-        board.innerHTML = sorted.slice(0, 3).map((b, i) => `
-            <div class="leader-item">
-                <span class="rank">${i+1}</span>
-                <img src="${b.pData.url}">
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.pData.name}</span>
-            </div>
-        `).join('');
-    }
-
-    function checkWinner(event) {
-        event.pairs.forEach(pair => {
-            if (!isGameOver && (pair.bodyA.label === 'goal' || pair.bodyB.label === 'goal')) {
-                const ball = pair.bodyA.label === 'ball' ? pair.bodyA : pair.bodyB;
-                if (ball.pData) {
-                    isGameOver = true;
-                    showWinner(ball.pData);
+        // 4. 同時釋放：改用循環直接生成
+        photoTextures.forEach((data, i) => {
+            const xOffset = (i % 5) * 40 - 80; // 水平稍微錯開避免重疊卡住
+            const ball = Bodies.circle(WORLD_WIDTH/2 + xOffset, 100 - (Math.floor(i/5)*70), BALL_RADIUS, {
+                restitution: 0.5,
+                friction: 0.02,
+                label: 'player-ball',
+                render: {
+                    sprite: {
+                        texture: data.url,
+                        xScale: (BALL_RADIUS * 2) / 200,
+                        yScale: (BALL_RADIUS * 2) / 200
+                    }
                 }
-            }
+            });
+            ball.playerName = data.name;
+            ball.playerImg = data.url;
+            Composite.add(engine.world, ball);
         });
+    });
+
+    function announceWinner(ball) {
+        if (isGameOver) return;
+        isGameOver = true;
+        setTimeout(() => {
+            const display = document.getElementById('winner-display');
+            document.getElementById('winner-img-container').innerHTML = `<img src="${ball.playerImg}">`;
+            document.getElementById('winner-name').innerText = ball.playerName;
+            display.style.display = 'flex';
+        }, 500);
     }
 
-    function showWinner(data) {
-        const popup = document.getElementById('winner-popup');
-        document.getElementById('winner-media').innerHTML = `<img src="${data.url}">`;
-        document.getElementById('winner-name-text').innerText = data.name;
-        popup.style.display = 'block';
-    }
-
-    function resetGame() {
-        // 清除物理世界中的球
-        const balls = Composite.allBodies(engine.world).filter(b => b.label === 'ball');
-        balls.forEach(b => Composite.remove(engine.world, b));
-        
-        // 重置鏡頭與狀態
-        document.getElementById('winner-popup').style.display = 'none';
-        document.getElementById('setup-screen').style.display = 'flex';
-        renderPlayerList();
-    }
-
-    // 啟動
-    initPhysics();
+    // 隨時修正畫布大小
     window.addEventListener('resize', () => {
         render.canvas.width = window.innerWidth;
         render.canvas.height = window.innerHeight;
     });
+
+    init();
 </script>
 </body>
 </html>
