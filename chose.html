@@ -3,42 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 6.0 - 全能關卡版</title>
+    <title>物理抽獎 7.0 - 巔峰競技版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        :root { --main: #00e5ff; --bg: #050505; }
-        body { margin: 0; background: var(--bg); font-family: "PingFang TC", sans-serif; overflow: hidden; color: #eee; }
-        #panel { position: fixed; left: 15px; top: 15px; width: 260px; max-height: 80vh; background: rgba(15,15,15,0.9); border-radius: 15px; padding: 20px; z-index: 100; border: 1px solid #333; backdrop-filter: blur(10px); overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background: #222; padding: 8px; border-radius: 10px; border: 1px solid #444; }
-        .row img { width: 35px; height: 35px; border-radius: 50%; }
-        .row input { background: transparent; border: none; border-bottom: 1px solid #555; color: #fff; padding: 2px; width: 100%; outline: none; }
-        #start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 0 15px var(--main); }
-        #start:disabled { background: #333; color: #666; box-shadow: none; }
-        #win { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 35px; border-radius: 30px; display: none; flex-direction: column; align-items: center; z-index: 200; text-align: center; }
-        #win img { width: 180px; height: 180px; border-radius: 50%; border: 6px solid var(--main); margin-bottom: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
-        .retry { margin-top: 15px; padding: 10px 30px; background: #000; color: #fff; border: none; border-radius: 10px; cursor: pointer; }
+        :root { --main: #00ffa2; --bg: #050505; }
+        body { margin: 0; background: var(--bg); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; overflow: hidden; color: #eee; }
+        
+        /* 設定面板 */
+        #panel { position: fixed; left: 15px; top: 15px; width: 250px; max-height: 80vh; background: rgba(10,10,10,0.9); border-radius: 15px; padding: 20px; z-index: 100; border: 1px solid #333; backdrop-filter: blur(10px); overflow-y: auto; }
+        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; background: #1a1a1a; padding: 6px; border-radius: 8px; border: 1px solid #444; }
+        .row img { width: 30px; height: 30px; border-radius: 50%; }
+        .row input { background: transparent; border: none; color: #fff; width: 100%; outline: none; font-size: 13px; }
+        #start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        
+        /* 即時排行榜 */
+        #leaderboard { position: fixed; right: 15px; top: 15px; width: 180px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; }
+        .rank-item { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: bold; }
+        .rank-item img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid gold; }
+        .rank-num { color: gold; width: 20px; }
+
+        /* 中獎彈窗 */
+        #win { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 30px; border-radius: 25px; display: none; flex-direction: column; align-items: center; z-index: 200; text-align: center; box-shadow: 0 0 50px var(--main); }
+        #win img { width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--main); margin-bottom: 15px; }
+        .retry { padding: 10px 25px; background: #000; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+
+        canvas { image-rendering: -webkit-optimize-contrast; }
     </style>
 </head>
 <body>
 
 <div id="panel">
-    <h3 style="margin:0 0 15px 0; color:var(--main); letter-spacing: 2px;">闖關式抽獎 6.0</h3>
-    <input type="file" id="files" multiple accept="image/*" style="font-size: 12px; margin-bottom: 15px;">
+    <h4 style="margin:0 0 10px 0; color:var(--main);">競技場設定</h4>
+    <input type="file" id="files" multiple accept="image/*" style="font-size: 11px; margin-bottom: 10px;">
     <div id="p-list"></div>
-    <button id="start" disabled>上傳照片開始闖關</button>
+    <button id="start" disabled>開始抽獎</button>
+</div>
+
+<div id="leaderboard">
+    <div style="font-size: 12px; color: #aaa; margin-bottom: 10px;">🏆 目前領先者</div>
+    <div id="rank-content"></div>
 </div>
 
 <div id="win">
-    <h2 style="margin:0; font-weight: 900; color: #555;">WINNER!</h2>
+    <h2 style="margin:0;">🏆 冠軍誕生 🏆</h2>
     <div id="win-img"></div>
-    <h1 id="win-name" style="margin:0 0 10px 0; font-size: 36px;"></h1>
-    <button class="retry" onclick="retry()">再次挑戰</button>
+    <h1 id="win-name" style="margin:5px 0;"></h1>
+    <button class="retry" onclick="retry()">重新挑戰</button>
 </div>
 
 <script>
 const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
-
-const W = 600, H = 8000, BALL_R = 28;
+const W = 600, H = 12000, BALL_R = 26;
 let engine, render, runner, players = [], isPlay = false;
 
 function init() {
@@ -46,51 +61,56 @@ function init() {
     render = Render.create({
         element: document.body,
         engine: engine,
-        options: { 
-            width: window.innerWidth, height: window.innerHeight, 
-            wireframes: false, background: '#050505', hasBounds: true,
-            pixelRatio: 2 // 強制高畫質
-        }
+        options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: '#050505', hasBounds: true, pixelRatio: window.devicePixelRatio }
     });
 
     const obs = [];
-    const wallStyle = { isStatic: true, render: { fillStyle: '#151515' } };
-    
-    // --- 第一區：亂石林 (0-2000px) ---
-    for (let i = 0; i < 60; i++) {
-        obs.push(Bodies.circle(Math.random()*W, 600 + Math.random()*1400, 6, { isStatic: true, render: { fillStyle: '#333' } }));
+    // --- 第一關：震動石林 (0-2000) --- 解決卡球
+    for (let i = 0; i < 50; i++) {
+        const pin = Bodies.circle(Math.random()*W, 600 + Math.random()*1400, 5, { isStatic: true, render: { fillStyle: '#333' } });
+        obs.push(pin);
+        Events.on(engine, 'beforeUpdate', () => { if(Math.random() > 0.95) Body.translate(pin, {x: Math.random()-0.5, y: 0}); });
     }
 
-    // --- 第二區：旋轉磨盤 (2000-4000px) ---
-    for (let y = 2200; y < 4000; y += 600) {
-        const x = W/2 + (y%1200===0 ? -120 : 120);
-        const gear = Bodies.rectangle(x, y, 350, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#ff3d00' } });
+    // --- 第二關：旋轉絞肉機 (2000-4000) ---
+    for (let y = 2400; y < 4000; y += 500) {
+        const x = W/2 + (y%1000===0 ? -100 : 100);
+        const gear = Bodies.rectangle(x, y, 300, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#ff3d00' } });
         const p = Constraint.create({ pointA: { x: x, y: y }, bodyB: gear, stiffness: 1 });
         obs.push(gear, p);
-        Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(gear, 0.06));
+        Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(gear, 0.07));
     }
 
-    // --- 第三區：S 型窄道 (4000-6000px) ---
+    // --- 第三關：S 型蛇道 (4000-6000) ---
     for (let y = 4200; y < 6000; y += 400) {
-        const offset = Math.sin(y/500) * 150;
+        const offset = Math.sin(y/400) * 120;
         obs.push(
-            Bodies.rectangle(W/2 + offset - 250, y, 400, 40, { isStatic: true, angle: 0.2, render: { fillStyle: '#00e5ff' } }),
-            Bodies.rectangle(W/2 + offset + 250, y, 400, 40, { isStatic: true, angle: -0.2, render: { fillStyle: '#00e5ff' } })
+            Bodies.rectangle(W/2+offset-240, y, 350, 30, { isStatic: true, angle: 0.15, render: { fillStyle: '#00e5ff' } }),
+            Bodies.rectangle(W/2+offset+240, y, 350, 30, { isStatic: true, angle: -0.15, render: { fillStyle: '#00e5ff' } })
         );
     }
 
-    // --- 第四區：高彈力跳板 (6000-7800px) ---
-    for (let i = 0; i < 25; i++) {
-        obs.push(Bodies.circle(Math.random()*W, 6200 + Math.random()*1500, 25, { 
-            isStatic: true, restitution: 1.5, render: { fillStyle: '#ffea00' } 
-        }));
+    // --- 第四關：重力加速漩渦 (6000-8500) ---
+    for (let y = 6200; y < 8500; y += 600) {
+        obs.push(Bodies.rectangle(W/2, y, 10, 400, { isStatic: true, angle: 1.57, render: { fillStyle: '#6200ea' } }));
+        obs.push(Bodies.circle(W/2, y, 60, { isStatic: true, isSensor: true, render: { fillStyle: 'rgba(98,0,234,0.1)' } }));
     }
 
-    // 牆壁與終點
+    // --- 第五關：彈跳地獄 (8500-10500) ---
+    for (let i = 0; i < 30; i++) {
+        obs.push(Bodies.circle(Math.random()*W, 8700 + Math.random()*1500, 20, { isStatic: true, restitution: 1.6, render: { fillStyle: '#ffea00' } }));
+    }
+
+    // --- 第六關：終極漏斗 (10500-11800) ---
+    obs.push(
+        Bodies.rectangle(120, 11200, 450, 30, { isStatic: true, angle: 0.6, render: { fillStyle: '#fff' } }),
+        Bodies.rectangle(480, 11200, 450, 30, { isStatic: true, angle: -0.6, render: { fillStyle: '#fff' } })
+    );
+
     const walls = [
-        Bodies.rectangle(-25, H/2, 50, H, wallStyle),
-        Bodies.rectangle(W+25, H/2, 50, H, wallStyle),
-        Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'finish', render: { fillStyle: '#00ff88' } })
+        Bodies.rectangle(-25, H/2, 50, H, { isStatic: true, render: { fillStyle: '#111' } }),
+        Bodies.rectangle(W+25, H/2, 50, H, { isStatic: true, render: { fillStyle: '#111' } }),
+        Bodies.rectangle(W/2, H+50, W, 100, { isStatic: true, label: 'finish', render: { fillStyle: '#00ffa2' } })
     ];
 
     Composite.add(engine.world, [...walls, ...obs]);
@@ -98,27 +118,38 @@ function init() {
     runner = Runner.create();
     Runner.run(runner, engine);
 
-    // 鏡頭跟隨與高品質渲染
     Events.on(render, 'afterRender', () => {
         const ctx = render.context;
         const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
         if (!balls.length) return;
 
-        const lead = balls.reduce((a, b) => a.position.y > b.position.y ? a : b);
+        // 排行榜邏輯
+        const sorted = [...balls].sort((a, b) => b.position.y - a.position.y);
+        updateLeaderboard(sorted.slice(0, 3));
+
+        // 鏡頭跟隨
+        const lead = sorted[0];
         const vh = render.options.height;
-        let ty = Math.min(Math.max(0, lead.position.y - vh * 0.4), H - vh);
+        let ty = Math.min(Math.max(0, lead.position.y - vh * 0.45), H - vh);
         render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
         render.bounds.min.x = 0; render.bounds.max.x = W;
 
-        // 繪製名稱
-        ctx.font = "bold 16px sans-serif";
-        ctx.fillStyle = "#fff";
+        // 渲染名字 (緊貼球體)
+        ctx.save();
         ctx.textAlign = "center";
         balls.forEach(b => {
             const sx = (b.position.x - render.bounds.min.x) * (render.canvas.width / W);
             const sy = (b.position.y - render.bounds.min.y) * (render.canvas.height / (render.bounds.max.y - render.bounds.min.y));
-            ctx.fillText(b.pName, sx, sy + 45);
+            
+            // 名字背景底色
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.fillRect(sx - 40, sy + 30, 80, 18);
+            
+            ctx.font = "bold 13px sans-serif";
+            ctx.fillStyle = "#fff";
+            ctx.fillText(b.pName, sx, sy + 43); // 距離縮短
         });
+        ctx.restore();
     });
 
     Events.on(engine, 'collisionStart', (e) => {
@@ -131,7 +162,17 @@ function init() {
     });
 }
 
-// 修正正圓與抗鋸齒圖片處理
+function updateLeaderboard(topThree) {
+    const container = document.getElementById('rank-content');
+    container.innerHTML = topThree.map((b, i) => `
+        <div class="rank-item">
+            <span class="rank-num">${i+1}</span>
+            <img src="${b.pUrl}">
+            <span style="font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.pName}</span>
+        </div>
+    `).join('');
+}
+
 async function processImg(file) {
     return new Promise(res => {
         const r = new FileReader();
@@ -139,21 +180,15 @@ async function processImg(file) {
             const img = new Image();
             img.onload = () => {
                 const c = document.createElement('canvas');
-                c.width = c.height = 400; // 高取樣
+                c.width = c.height = 400;
                 const x = c.getContext('2d');
                 x.imageSmoothingEnabled = true;
                 x.imageSmoothingQuality = 'high';
-
-                // 繪製正圓背景
-                x.beginPath(); x.arc(200, 200, 195, 0, Math.PI*2); x.clip();
-                
-                // 計算 Cover 比例
+                x.beginPath(); x.arc(200, 200, 190, 0, Math.PI*2); x.clip();
                 const s = Math.max(400/img.width, 400/img.height);
                 x.drawImage(img, (400-img.width*s)/2, (400-img.height*s)/2, img.width*s, img.height*s);
-                
-                // 增加精緻白邊防止邊緣模糊
-                x.strokeStyle = "white"; x.lineWidth = 12; x.stroke();
-                res(c.toDataURL('image/png', 1.0));
+                x.strokeStyle = "white"; x.lineWidth = 15; x.stroke();
+                res(c.toDataURL());
             };
             img.src = e.target.result;
         };
@@ -180,8 +215,8 @@ document.getElementById('start').addEventListener('click', () => {
     isPlay = true;
     document.getElementById('panel').style.display = 'none';
     players.forEach((p, i) => {
-        const b = Bodies.circle(300 + (Math.random()*100-50), 100 - (i*80), BALL_R, {
-            restitution: 0.5, friction: 0.001, label: 'p',
+        const b = Bodies.circle(300 + (Math.random()*60-30), 100 - (i*70), BALL_R, {
+            restitution: 0.4, friction: 0.002, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/400, yScale: (BALL_R*2)/400 } }
         });
         b.pName = p.name; b.pUrl = p.url;
