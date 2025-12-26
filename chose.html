@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 13.0 - 極速流暢版</title>
+    <title>物理抽獎 13.0 - 公平防卡死版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { --main: #00ffa2; --bg: #050505; }
@@ -36,7 +36,7 @@
 <body>
 
 <div id="ui-panel">
-    <div style="font-size: 16px; color: var(--main); margin-bottom: 12px; font-weight: bold; text-align: center;">物理抽獎 13.0 - 流暢修正版</div>
+    <div style="font-size: 16px; color: var(--main); margin-bottom: 12px; font-weight: bold; text-align: center;">物理抽獎 13.0 - 公平防卡死版</div>
     <input type="file" id="file-input" multiple accept="image/*" style="font-size: 12px; margin-bottom: 12px; width: 100%;">
     <div id="list-area"></div>
     <button id="btn-start" disabled>確認名單並發射！</button>
@@ -59,6 +59,9 @@ const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = 
 const W = 400, H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 
+// 關鍵常數：確保縫隙大於球直徑
+const SAFE_GAP = BALL_R * 2.5; 
+
 function init() {
     engine = Engine.create();
     render = Render.create({
@@ -69,63 +72,66 @@ function init() {
 
     const obs = [];
 
-    // --- 障礙物生成邏輯修正 ---
-    // 1. 邊界半月/圓點：確保它們緊貼牆壁，且中間留出足夠空間
-    for (let y = 500; y < H; y += 220) {
-        const r = 25; // 障礙物半徑
-        // 這些障礙物現在生成在牆邊，確保不會在離牆一球距離處出現孤立點
+    // 1. 修正邊界擾流陣 (縮小範圍避免卡死)
+    for (let y = 500; y < H; y += 180) {
+        const r = 10 + Math.random() * 20; 
         obs.push(
             Bodies.circle(-5, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
-            Bodies.circle(W + 5, y + 110, r, { isStatic: true, render: { fillStyle: '#222' } })
+            Bodies.circle(W + 5, y + 90, r, { isStatic: true, render: { fillStyle: '#222' } })
         );
     }
 
-    // 2. 隨機核心機關 (確保機關不會與邊緣形成死角)
+    // 2. 隨機機關 (加上 X 軸安全鎖)
     for (let y = 800; y < H - 1000; y += 350) {
         const type = Math.floor(Math.random() * 8);
         const xCenter = W / 2;
+        // 計算安全 X 範圍：避開兩邊牆壁至少 SAFE_GAP
+        const safeX = SAFE_GAP + Math.random() * (W - 2 * SAFE_GAP);
 
-        if (type === 0) { // 旋轉筒 (置中)
-            const roller = Bodies.circle(xCenter, y, 45, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 4 } });
+        if (type === 0) { // 旋轉筒 (限縮半徑)
+            const rollerR = 30;
+            const roller = Bodies.circle(safeX, y, rollerR, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 4 } });
             obs.push(roller);
             Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.12));
-        } else if (type === 1) { // 伸縮閘門
-            const gL = Bodies.rectangle(xCenter - 110, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
-            const gR = Bodies.rectangle(xCenter + 110, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
+        } else if (type === 1) { // 伸縮閘門 (限縮寬度)
+            const gL = Bodies.rectangle(xCenter - 100, y, 80, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
+            const gR = Bodies.rectangle(xCenter + 100, y, 80, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
             obs.push(gL, gR);
             Events.on(engine, 'beforeUpdate', () => {
                 const move = Math.sin(engine.timing.timestamp * 0.003) * 50;
-                Body.setPosition(gL, { x: xCenter - 130 + move, y: y });
-                Body.setPosition(gR, { x: xCenter + 130 - move, y: y });
+                Body.setPosition(gL, { x: xCenter - 110 + move, y: y });
+                Body.setPosition(gR, { x: xCenter + 110 - move, y: y });
             });
-        } else if (type === 2) { // 螺旋槳
+        } else if (type === 2) { // 螺旋槳 (確保長度不會封死左右)
             const star = Bodies.rectangle(xCenter, y, 160, 15, { chamfer: { radius: 7 }, render: { fillStyle: '#ff4b2b' } });
             obs.push(star, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: star, stiffness: 1 }));
-            const spd = (0.06 + Math.random() * 0.08) * (Math.random() > 0.5 ? 1 : -1);
+            const spd = (0.05 + Math.random() * 0.05) * (Math.random() > 0.5 ? 1 : -1);
             Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, spd));
-        } else if (type === 3) { // 彈力斜板 (靠邊但不封死)
+        } else if (type === 3) { // 彈力斜板 (修正角度與長度)
             const side = Math.random() > 0.5;
-            obs.push(Bodies.rectangle(side ? 80 : 320, y, 160, 20, { isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } }));
-        } else if (type === 4) { // 疏散針刺陣 (間隔加大)
-            for(let i=0; i<3; i++) obs.push(Bodies.circle(100 + (i*100), y, 15, { isStatic: true, render: { fillStyle: '#777' } }));
+            obs.push(Bodies.rectangle(side ? 80 : 320, y, 140, 20, { isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.2, render: { fillStyle: '#00ccff' } }));
+        } else if (type === 4) { // 針刺陣 (等分排列確保縫隙)
+            const dots = 3;
+            const spacing = W / (dots + 1);
+            for(let i=1; i<=dots; i++) obs.push(Bodies.circle(i * spacing, y, 12, { isStatic: true, render: { fillStyle: '#777' } }));
         } else if (type === 5) { // 三角攪拌
-            const tri = Bodies.polygon(xCenter, y, 3, 50, { isStatic: true, render: { fillStyle: '#9c27b0' } });
+            const tri = Bodies.polygon(safeX, y, 3, 40, { isStatic: true, render: { fillStyle: '#9c27b0' } });
             obs.push(tri);
             Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.08));
-        } else if (type === 6) { // 左右推動塊
-            const wall = Bodies.rectangle(xCenter, y, 120, 30, { isStatic: true, render: { fillStyle: '#444' } });
+        } else if (type === 6) { // 推擠塊 (限制橫移範圍)
+            const wall = Bodies.rectangle(xCenter, y, 100, 35, { isStatic: true, render: { fillStyle: '#444' } });
             obs.push(wall);
             Events.on(engine, 'beforeUpdate', () => Body.setPosition(wall, { x: xCenter + Math.sin(engine.timing.timestamp * 0.002) * 80, y: y }));
-        } else { // 擺動大長板
+        } else { // 擺動板
             const plank = Bodies.rectangle(xCenter, y, 200, 15, { chamfer: { radius: 5 }, render: { fillStyle: '#222' } });
             obs.push(plank, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: plank, stiffness: 0.05 }));
         }
     }
 
-    // 終點 V 型 (開口寬度確保 3 球可過)
+    // 終點 V 型 (加大開口)
     obs.push(
-        Bodies.rectangle(0, H-600, 300, 40, { isStatic: true, angle: 0.6, render: { fillStyle: '#fff' } }),
-        Bodies.rectangle(W, H-600, 300, 40, { isStatic: true, angle: -0.6, render: { fillStyle: '#fff' } })
+        Bodies.rectangle(40, H-600, 220, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#fff' } }),
+        Bodies.rectangle(360, H-600, 220, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#fff' } })
     );
 
     const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
@@ -143,7 +149,11 @@ function init() {
         if (!balls.length) return;
         const sorted = [...balls].sort((a, b) => b.position.y - a.position.y);
         document.getElementById('rank-list').innerHTML = sorted.slice(0, 3).map((b, i) => `
-            <div class="rank-item rank-${i}"><div class="rank-badge">${i+1}</div><img src="${b.pUrl}"><div class="rank-name">${b.pName}</div></div>
+            <div class="rank-item rank-${i}">
+                <div class="rank-badge">${i + 1}</div>
+                <img src="${b.pUrl}">
+                <div class="rank-name">${b.pName}</div>
+            </div>
         `).join('');
         const vh = render.options.height;
         let ty = Math.min(Math.max(0, sorted[0].position.y - vh/2), H - vh);
@@ -196,15 +206,13 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 document.getElementById('btn-start').addEventListener('click', () => {
     isGaming = true; 
     document.getElementById('ui-panel').style.display = 'none';
-    const startY = 100;
-    const spacingX = BALL_R * 2.2;
-    const ballsPerRow = Math.floor((W - 40) / spacingX);
+    const startY = 100, spacingX = BALL_R * 2.2;
+    const ballsPerRow = Math.floor((W - 40) / spacingX); 
     players.forEach((p, i) => {
-        const row = Math.floor(i / ballsPerRow);
-        const col = i % ballsPerRow;
+        const row = Math.floor(i / ballsPerRow), col = i % ballsPerRow;
         const rowWidth = Math.min(players.length, ballsPerRow) * spacingX;
         const startX = (W - rowWidth) / 2 + (spacingX / 2);
-        const b = Bodies.circle(startX + col * spacingX, startY - (row * spacingX * 1.5), BALL_R, {
+        const b = Bodies.circle(startX + col * spacingX, startY - (row * spacingX), BALL_R, {
             restitution: 0.5, friction: 0.01, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
         });
