@@ -3,31 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 13.0 - IG 自動辨識版</title>
+    <title>物理抽獎 13.0 - IG 頭像修復版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { --main: #00ffa2; --bg: #050505; }
         body { margin: 0; background: var(--bg); font-family: "PingFang TC", sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; color: #eee; }
         
-        /* UI 面板 */
         #ui-panel { position: fixed; left: 10px; top: 10px; width: calc(100% - 130px); max-height: 45vh; background: rgba(25,25,25,0.95); border-radius: 15px; padding: 15px; z-index: 100; border: 1px solid #444; backdrop-filter: blur(10px); overflow-y: auto; }
         .player-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; background: #1a1a1a; padding: 8px; border-radius: 10px; border: 1px solid #444; }
-        .player-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555; background: #333; }
+        .player-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555; background: #222; }
         .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 13px; outline: none; }
         #btn-start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        #btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* 右側排行榜 */
         #leaderboard { position: fixed; right: 10px; top: 10px; width: 100px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; }
         .rank-item { display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; position: relative; }
         .rank-item img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--main); object-fit: cover; }
         .rank-badge { position: absolute; top: -5px; left: 5px; background: var(--main); color: #000; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; border: 1px solid #000; }
         .rank-name { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-top: 3px; color: #fff; }
 
-        /* 獲勝彈窗 */
         #win-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 30px; border-radius: 25px; display: none; flex-direction: column; align-items: center; z-index: 200; width: 75%; text-align: center; box-shadow: 0 0 80px var(--main); }
         #win-popup img { width: 160px; height: 160px; border-radius: 50%; border: 6px solid var(--main); object-fit: cover; margin-bottom: 15px; }
         .btn-retry { padding: 12px 30px; background: #000; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        
         #add-player { margin-bottom: 10px; background: #333; color: #fff; border: 1px dashed #666; width: 100%; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
@@ -35,9 +32,8 @@
 
 <div id="ui-panel">
     <div style="font-size: 16px; color: var(--main); margin-bottom: 12px; font-weight: bold; text-align: center;">物理抽獎 13.0</div>
-    <div style="font-size: 11px; color: #aaa; margin-bottom: 10px;">貼上 IG 連結可自動獲取資訊，或選擇檔案上傳。</div>
     <input type="file" id="file-input" multiple accept="image/*" style="font-size: 12px; margin-bottom: 12px; width: 100%;">
-    <button id="add-player">+ 手動新增名單 (支援 IG 連結)</button>
+    <button id="add-player">+ 手動新增 / 貼上 IG 連結</button>
     <div id="list-area"></div>
     <button id="btn-start" disabled>確認名單並發射！</button>
 </div>
@@ -51,7 +47,7 @@
     <h2 style="margin:0; font-size: 18px; color: #666; font-weight: 900;">恭喜優勝者！</h2>
     <div id="win-avatar"></div>
     <h1 id="win-name" style="margin:5px 0 25px 0; font-size: 32px;"></h1>
-    <button class="btn-retry" onclick="resetGame()">重新挑戰 (保留名單)</button>
+    <button class="btn-retry" onclick="resetGame()">重新挑戰</button>
 </div>
 
 <script>
@@ -62,8 +58,7 @@ let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 function init() {
     engine = Engine.create();
     render = Render.create({
-        element: document.body,
-        engine: engine,
+        element: document.body, engine: engine,
         options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: '#050505', hasBounds: true }
     });
 
@@ -72,22 +67,19 @@ function init() {
 
     for (let y = 500; y < H; y += 180) {
         const r = 15 + Math.random() * 20;
-        obs.push(
-            Bodies.circle(-5, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
-            Bodies.circle(W+5, y + 90, r, { isStatic: true, render: { fillStyle: '#222' } })
-        );
+        obs.push(Bodies.circle(-5, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
+                 Bodies.circle(W+5, y + 90, r, { isStatic: true, render: { fillStyle: '#222' } }));
     }
 
     for (let y = 800; y < H - 1000; y += 350) {
         const type = Math.floor(Math.random() * 8);
-        const xCenter = W / 2;
-        const safeX = SAFE_GAP + Math.random() * (W - 2 * SAFE_GAP);
+        const xCenter = W / 2, safeX = SAFE_GAP + Math.random() * (W - 2 * SAFE_GAP);
 
-        if (type === 0) { // 高速噴射筒
+        if (type === 0) {
             const roller = Bodies.circle(safeX, y, 45, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 4 } });
             obs.push(roller);
             Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.15));
-        } else if (type === 1) { // 心跳閘門
+        } else if (type === 1) {
             const gL = Bodies.rectangle(xCenter - 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
             const gR = Bodies.rectangle(xCenter + 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
             obs.push(gL, gR);
@@ -96,41 +88,30 @@ function init() {
                 Body.setPosition(gL, { x: xCenter - 120 + move, y: y });
                 Body.setPosition(gR, { x: xCenter + 120 - move, y: y });
             });
-        } else if (type === 2) { // 紅色螺旋星
+        } else if (type === 2) {
             const star = Bodies.rectangle(xCenter, y, 170, 15, { chamfer: { radius: 7 }, render: { fillStyle: '#ff4b2b' } });
             obs.push(star, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: star, stiffness: 1 }));
-            const spd = (0.05 + Math.random() * 0.1) * (Math.random() > 0.5 ? 1 : -1);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, spd));
-        } else if (type === 3) { // 藍色彈力加速斜板
-            const side = Math.random() > 0.5;
-            obs.push(Bodies.rectangle(side ? 100 : 300, y, 180, 20, { isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } }));
-        } else if (type === 4) { // 撞擊球陣
+            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, 0.08));
+        } else if (type === 3) {
+            obs.push(Bodies.rectangle(Math.random() > 0.5 ? 100 : 300, y, 180, 20, { isStatic: true, angle: 0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } }));
+        } else if (type === 4) {
             for(let i=0; i<4; i++) obs.push(Bodies.circle(70 + (i*85), y + (i%2*40), 12, { isStatic: true, render: { fillStyle: '#777' } }));
-        } else if (type === 5) { // 紫色攪拌三角形
+        } else if (type === 5) {
             const tri = Bodies.polygon(safeX, y, 3, 48, { isStatic: true, render: { fillStyle: '#9c27b0' } });
             obs.push(tri);
             Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.08));
-        } else if (type === 6) { // 推擠塊
+        } else if (type === 6) {
             const wall = Bodies.rectangle(xCenter, y, 140, 40, { isStatic: true, render: { fillStyle: '#444' } });
             obs.push(wall);
             Events.on(engine, 'beforeUpdate', () => Body.setPosition(wall, { x: xCenter + Math.sin(engine.timing.timestamp * 0.002) * 120, y: y }));
-        } else { // 擺動大長板
+        } else {
             const plank = Bodies.rectangle(xCenter, y, 240, 15, { chamfer: { radius: 5 }, render: { fillStyle: '#222' } });
             obs.push(plank, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: plank, stiffness: 0.05 }));
         }
     }
 
-    obs.push(
-        Bodies.rectangle(50, H-600, 250, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#fff' } }),
-        Bodies.rectangle(350, H-600, 250, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#fff' } })
-    );
-
     const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
-    Composite.add(engine.world, [
-        Bodies.rectangle(-22, H/2, 45, H, { isStatic: true, render: { fillStyle: '#000' } }),
-        Bodies.rectangle(W+22, H/2, 45, H, { isStatic: true, render: { fillStyle: '#000' } }),
-        goal, ...obs
-    ]);
+    Composite.add(engine.world, [Bodies.rectangle(-22, H/2, 45, H, { isStatic: true }), Bodies.rectangle(W+22, H/2, 45, H, { isStatic: true }), goal, ...obs]);
 
     Render.run(render);
     Runner.run(Runner.create(), engine);
@@ -158,7 +139,25 @@ function init() {
     });
 }
 
-// 核心：處理 IG 功能與輸入偵測
+// 修復：處理跨域並裁切圓形圖片
+async function processExternalImg(avatarUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = c.height = 300;
+            const x = c.getContext('2d');
+            x.beginPath(); x.arc(150, 150, 150, 0, Math.PI * 2); x.clip();
+            const s = Math.min(img.width, img.height);
+            x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 300, 300);
+            resolve(c.toDataURL());
+        };
+        img.onerror = () => resolve("https://www.gravatar.com/avatar/0?d=mp"); // 失敗則用預設圖
+        img.src = avatarUrl;
+    });
+}
+
 async function handlePlayerInput(el, id) {
     const val = el.value.trim();
     const player = players.find(p => p.id === id);
@@ -167,36 +166,25 @@ async function handlePlayerInput(el, id) {
     if (val.includes('instagram.com')) {
         const username = val.split('instagram.com/')[1]?.split('/')[0]?.split('?')[0];
         if (username) {
-            el.value = "載入中...";
-            const avatarUrl = `https://unavatar.io/instagram/${username}`;
+            el.value = "獲取中...";
+            // 使用穩定代理
+            const apiUrl = `https://unavatar.io/instagram/${username}`;
+            const processedUrl = await processExternalImg(apiUrl);
             
-            // 嘗試載入圖片
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-                player.url = avatarUrl;
-                player.name = username;
-                el.value = username;
-                document.querySelector(`img[data-id="${id}"]`).src = avatarUrl;
-            };
-            img.onerror = () => {
-                el.value = username; // 即使沒圖也更名
-                player.name = username;
-            };
-            img.src = avatarUrl;
+            player.url = processedUrl;
+            player.name = username;
+            el.value = username;
+            document.querySelector(`img[data-id="${id}"]`).src = processedUrl;
         }
     } else {
         player.name = val;
     }
 }
 
-function addPlayerRow(id, url = "", name = "") {
+function addPlayerRow(id, url = "https://www.gravatar.com/avatar/0?d=mp", name = "") {
     const d = document.createElement('div');
     d.className = 'player-row';
-    d.innerHTML = `
-        <img src="${url}" data-id="${id}">
-        <input type="text" value="${name}" data-id="${id}" placeholder="貼上 IG 連結或輸入名字" oninput="handlePlayerInput(this, ${id})">
-    `;
+    d.innerHTML = `<img src="${url}" data-id="${id}"><input type="text" value="${name}" data-id="${id}" placeholder="貼上 IG 連結或名字" oninput="handlePlayerInput(this, ${id})">`;
     document.getElementById('list-area').appendChild(d);
     document.getElementById('btn-start').disabled = false;
 }
@@ -216,8 +204,8 @@ async function prepImg(file) {
                 const c = document.createElement('canvas');
                 c.width = c.height = 300;
                 const x = c.getContext('2d');
-                const s = Math.min(img.width, img.height);
                 x.beginPath(); x.arc(150, 150, 150, 0, Math.PI*2); x.clip();
+                const s = Math.min(img.width, img.height);
                 x.drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, 300, 300);
                 res(c.toDataURL());
             };
@@ -237,15 +225,10 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 
 document.getElementById('btn-start').addEventListener('click', () => {
     isGaming = true; document.getElementById('ui-panel').style.display = 'none';
-    const spacingX = BALL_R * 2.2;
-    const ballsPerRow = Math.floor((W - 40) / spacingX);
-    
+    const spacingX = BALL_R * 2.2, ballsPerRow = Math.floor((W - 40) / spacingX);
     players.forEach((p, i) => {
-        const row = Math.floor(i / ballsPerRow);
-        const col = i % ballsPerRow;
-        const rowWidth = Math.min(players.length, ballsPerRow) * spacingX;
-        const startX = (W - rowWidth) / 2 + (spacingX / 2);
-        
+        const row = Math.floor(i / ballsPerRow), col = i % ballsPerRow;
+        const startX = (W - (Math.min(players.length, ballsPerRow) * spacingX)) / 2 + (spacingX / 2);
         const b = Bodies.circle(startX + col * spacingX, 100 - (row * 50), BALL_R, {
             restitution: 0.5, friction: 0.01, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
@@ -267,7 +250,6 @@ function resetGame() {
     document.getElementById('ui-panel').style.display = 'block';
     isGaming = false;
 }
-
 init();
 </script>
 </body>
