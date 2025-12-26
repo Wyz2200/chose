@@ -3,252 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奢華金屬轉盤 - 音效修正版</title>
+    <title>照片物理碰撞抽獎機 - 長地圖版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        :root {
-            --gold: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
-            --dark-metal: #2c3e50;
+        body { margin: 0; padding: 0; overflow: hidden; background: #222; font-family: "Microsoft JhengHei", sans-serif; color: white; }
+        #ui-layer { position: fixed; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; }
+        canvas { display: block; }
+        #winner-display {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95); color: #333; padding: 30px;
+            border-radius: 20px; text-align: center; display: none; z-index: 200;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
-        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        
-        /* 容器 */
-        .container { 
-            max-width: 500px; width: 100%; background: #ffffff; color: #333;
-            padding: 30px; border-radius: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            text-align: center; 
-        }
-
-        /* 標題與標籤 */
-        input[type="text"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; margin: 10px 0; box-sizing: border-box; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 12px; min-height: 40px; }
-        .tag { background: var(--dark-metal); color: white; padding: 6px 15px; border-radius: 50px; font-size: 14px; display: flex; align-items: center; }
-        .tag .remove-btn { margin-left: 10px; cursor: pointer; color: #ff4757; }
-
-        /* 轉盤外觀 */
-        .wheel-outer {
-            position: relative; margin: 40px auto; width: 340px; height: 340px;
-            border: 10px solid #333; border-radius: 50%;
-            background: #333; box-shadow: 0 0 20px rgba(241,196,15,0.4);
-        }
-        .luxury-pointer {
-            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-            width: 45px; height: 55px; z-index: 100; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
-        }
-        canvas { width: 340px; height: 340px; border-radius: 50%; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); }
-        .wheel-center {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 30px; height: 30px; background: white; border: 4px solid #f1c40f; border-radius: 50%; z-index: 10;
-        }
-
-        /* 按鈕 */
-        .spin-btn { 
-            background: var(--gold); color: white; border: none; padding: 18px 50px; 
-            font-size: 1.3rem; font-weight: bold; border-radius: 50px; cursor: pointer;
-            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4); width: 100%;
-        }
-        .spin-btn:disabled { background: #ccc; cursor: not-allowed; }
-
-        /* 彈窗 */
-        .modal-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 1000; 
-        }
-        .modal { 
-            background: white; padding: 40px; border-radius: 25px; text-align: center;
-            border: 4px solid #f1c40f; transform: scale(0.8); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .modal.active { transform: scale(1); }
-        .winner-display { font-size: 3rem; color: #d35400; font-weight: 900; margin: 20px 0; display: block; }
+        #winner-display img { width: 150px; height: 150px; border-radius: 50%; border: 5px solid #ffd700; }
+        button { cursor: pointer; background: #ff4757; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; }
+        button:disabled { background: #555; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="margin:0 0 10px 0;">🎡 抽獎設定</h2>
-    <input type="text" id="titleInput" value="尾牙幸運抽">
-    
-    <div class="tag-container" id="tagContainer"></div>
-    <div style="display:flex; gap:10px; margin-bottom: 20px;">
-        <input type="text" id="nameInput" placeholder="輸入名字..." style="margin:0">
-        <button onclick="addName()" style="background:#2ecc71; color:white; border:none; padding:0 20px; border-radius:12px; cursor:pointer;">+</button>
-    </div>
-
-    <div class="wheel-outer">
-        <svg class="luxury-pointer" viewBox="0 0 100 120">
-            <path d="M50 120 L90 40 A40 40 0 1 0 10 40 Z" fill="#f1c40f" stroke="#fff" stroke-width="2"/>
-        </svg>
-        <div class="wheel-center"></div>
-        <canvas id="wheelCanvas"></canvas>
-    </div>
-
-    <button id="spinBtn" class="spin-btn" onclick="handleSpinClick()">開始抽獎</button>
+<div id="ui-layer">
+    <h3>🎡 照片物理抽獎</h3>
+    <input type="file" id="upload" multiple accept="image/*" style="margin-bottom: 10px;"><br>
+    <button id="start-btn" disabled>請先上傳照片</button>
+    <p id="status" style="font-size: 12px; margin-top: 5px;">目前照片數：0</p>
 </div>
 
-<div id="modalOverlay" class="modal-overlay">
-    <div class="modal" id="modal">
-        <h2>🎊 恭喜獲獎 🎊</h2>
-        <p id="resTitleDisplay" style="color:#666;"></p>
-        <span class="winner-display" id="winnerName"></span>
-        <button class="spin-btn" style="padding:10px 30px" onclick="closeModal()">太棒了</button>
-    </div>
+<div id="winner-display">
+    <h1>🎊 恭喜中獎 🎊</h1>
+    <div id="winner-img-container"></div>
+    <h2 id="winner-name"></h2>
+    <button onclick="location.reload()">重新開始</button>
 </div>
-
-<audio id="tickSound" preload="auto" src="https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3"></audio>
-<audio id="winSound" preload="auto" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
 <script>
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
-    const tickSound = document.getElementById('tickSound');
-    const winSound = document.getElementById('winSound');
-    const spinBtn = document.getElementById('spinBtn');
-    
-    let names = ['張曉明', '李大同', '王小美', '陳阿三', '趙小六'];
-    let currentRotation = 0;
-    const colors = ['#FF5E5E', '#45AAF2', '#A55EEA', '#F7B731', '#26DE81', '#FD9644', '#2BCBBA'];
+    const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
 
-    function setupCanvas() {
-        const dpr = window.devicePixelRatio || 2;
-        canvas.width = 340 * dpr;
-        canvas.height = 340 * dpr;
-        ctx.scale(dpr, dpr);
-        drawWheel();
-    }
+    // 設定
+    const WORLD_WIDTH = 600;
+    const WORLD_HEIGHT = 4000; // 長度可以自由調整
+    const BALL_RADIUS = 25;
 
-    function renderTags() {
-        const container = document.getElementById('tagContainer');
-        container.innerHTML = '';
-        names.forEach((name, i) => {
-            const tag = document.createElement('div');
-            tag.className = 'tag';
-            tag.innerHTML = `${name} <span class="remove-btn" onclick="removeName(${i})">×</span>`;
-            container.appendChild(tag);
-        });
-        drawWheel();
-    }
+    let engine, render, runner;
+    let photoTextures = [];
+    let isGameOver = false;
 
-    function addName() {
-        const input = document.getElementById('nameInput');
-        if (input.value.trim()) {
-            names.push(input.value.trim());
-            input.value = '';
-            renderTags();
-        }
-    }
-
-    function removeName(i) { names.splice(i, 1); renderTags(); }
-
-    function drawWheel() {
-        const n = names.length;
-        if (n === 0) return;
-        const arc = (Math.PI * 2) / n;
-        ctx.clearRect(0, 0, 340, 340);
-        names.forEach((name, i) => {
-            const angle = i * arc;
-            ctx.beginPath();
-            ctx.fillStyle = colors[i % colors.length];
-            ctx.moveTo(170, 170);
-            ctx.arc(170, 170, 170, angle, angle + arc);
-            ctx.fill();
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            ctx.save();
-            ctx.translate(170, 170);
-            ctx.rotate(angle + arc / 2);
-            ctx.textAlign = "right";
-            ctx.fillStyle = "white";
-            ctx.font = "bold 18px sans-serif";
-            ctx.fillText(name, 155, 6);
-            ctx.restore();
-        });
-    }
-
-    // 關鍵修正：透過使用者第一次點擊，強制解鎖所有音訊
-    function handleSpinClick() {
-        // 解鎖音訊 (在某些手機上必須先 play 再 pause)
-        tickSound.play().then(() => {
-            tickSound.pause();
-            tickSound.currentTime = 0;
-            spin(); // 真正執行旋轉
-        }).catch(e => {
-            // 如果瀏覽器還是攔截，就直接轉
-            spin();
-        });
-        
-        winSound.play().then(() => {
-            winSound.pause();
-            winSound.currentTime = 0;
-        });
-    }
-
-    function spin() {
-        if (names.length < 2) return;
-        spinBtn.disabled = true;
-
-        const duration = 5000;
-        const rounds = 7 + Math.floor(Math.random() * 5);
-        const extraDegrees = Math.floor(Math.random() * 360);
-        const totalDegree = rounds * 360 + extraDegrees;
-        
-        currentRotation += totalDegree;
-        canvas.style.transform = `rotate(${currentRotation}deg)`;
-
-        // 模擬滴答聲邏輯
-        let lastTickAngle = 0;
-        const n = names.length;
-        const sliceDeg = 360 / n;
-        let start = null;
-
-        function playTicks(timestamp) {
-            if (!start) start = timestamp;
-            const elapsed = timestamp - start;
-            
-            // 計算當前旋轉了多少度 (使用簡易緩動函數模擬旋轉進度)
-            const progress = elapsed / duration;
-            const easeOut = 1 - Math.pow(1 - progress, 3); // 模擬轉盤減速
-            const currentStepDeg = totalDegree * easeOut;
-            
-            // 每當轉過一個扇區邊界，就響一次
-            if (currentStepDeg - lastTickAngle >= sliceDeg) {
-                tickSound.currentTime = 0;
-                tickSound.play().catch(()=>{});
-                lastTickAngle = currentStepDeg;
+    function init() {
+        engine = Engine.create();
+        render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: '#1a1a1a',
+                hasBounds: true
             }
+        });
 
-            if (elapsed < duration) {
-                requestAnimationFrame(playTicks);
+        // 建立邊界
+        const walls = [
+            Bodies.rectangle(WORLD_WIDTH/2, -50, WORLD_WIDTH, 100, { isStatic: true }), // 頂部
+            Bodies.rectangle(-10, WORLD_HEIGHT/2, 20, WORLD_HEIGHT, { isStatic: true }), // 左牆
+            Bodies.rectangle(WORLD_WIDTH+10, WORLD_HEIGHT/2, 20, WORLD_HEIGHT, { isStatic: true }), // 右牆
+            Bodies.rectangle(WORLD_WIDTH/2, WORLD_HEIGHT + 20, WORLD_WIDTH, 50, { isStatic: true, label: 'finish-line', render: { fillStyle: '#ffd700' } }) // 終點
+        ];
+
+        // 隨機產生釘子關卡
+        const pins = [];
+        for (let y = 300; y < WORLD_HEIGHT - 300; y += 120) {
+            const isEven = (y / 120) % 2 === 0;
+            for (let x = 50; x < WORLD_WIDTH; x += 80) {
+                const xPos = isEven ? x : x + 40;
+                pins.push(Bodies.circle(xPos, y, 5, { isStatic: true, render: { fillStyle: '#555' } }));
             }
         }
-        requestAnimationFrame(playTicks);
 
-        setTimeout(() => {
-            const actualRotation = currentRotation % 360;
-            const winningIndex = Math.floor((360 - (actualRotation % 360) + 270) % 360 / sliceDeg);
-            showResult(names[winningIndex]);
-        }, duration);
+        // 增加一些旋轉障礙物
+        for (let i = 0; i < 5; i++) {
+            const x = Math.random() * (WORLD_WIDTH - 200) + 100;
+            const y = 800 + (i * 600);
+            const bar = Bodies.rectangle(x, y, 150, 15, { frictionAir: 0 });
+            const pivot = Constraint.create({
+                pointA: { x: x, y: y },
+                bodyB: bar,
+                stiffness: 1,
+                length: 0
+            });
+            pins.push(bar, pivot);
+            // 讓它自動轉動
+            Events.on(engine, 'beforeUpdate', () => {
+                Body.setAngularVelocity(bar, 0.05);
+            });
+        }
+
+        Composite.add(engine.world, [...walls, ...pins]);
+        Render.run(render);
+        runner = Runner.create();
+        Runner.run(runner, engine);
+
+        // 鏡頭跟隨邏輯
+        Events.on(render, 'beforeRender', () => {
+            const balls = Composite.allBodies(engine.world).filter(b => b.label === 'player-ball');
+            if (balls.length > 0) {
+                let lowestBall = balls[0];
+                balls.forEach(b => {
+                    if (b.position.y > lowestBall.position.y) lowestBall = b;
+                });
+
+                const targetY = lowestBall.position.y;
+                const viewHeight = render.options.height;
+                
+                // 平滑滾動鏡頭
+                let minTop = Math.max(0, targetY - viewHeight * 0.7);
+                minTop = Math.min(minTop, WORLD_HEIGHT - viewHeight);
+
+                render.bounds.min.x = 0;
+                render.bounds.max.x = WORLD_WIDTH; // 鎖定寬度比例
+                render.bounds.min.y = minTop;
+                render.bounds.max.y = minTop + viewHeight;
+            }
+        });
+
+        // 碰撞偵測 (終點)
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach(pair => {
+                const labels = [pair.bodyA.label, pair.bodyB.label];
+                if (labels.includes('finish-line') && labels.includes('player-ball') && !isGameOver) {
+                    const ball = pair.bodyA.label === 'player-ball' ? pair.bodyA : pair.bodyB;
+                    announceWinner(ball);
+                }
+            });
+        });
     }
 
-    function showResult(winner) {
-        winSound.play();
-        document.getElementById('winnerName').innerText = winner;
-        document.getElementById('resTitleDisplay').innerText = document.getElementById('titleInput').value;
-        document.getElementById('modalOverlay').style.display = 'flex';
-        setTimeout(() => document.getElementById('modal').classList.add('active'), 50);
+    // 將圖片裁切為圓形
+    async function processImage(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 150;
+                    canvas.height = 150;
+                    const ctx = canvas.getContext('2d');
+                    ctx.beginPath();
+                    ctx.arc(75, 75, 75, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(img, 0, 0, 150, 150);
+                    resolve({
+                        url: canvas.toDataURL(),
+                        name: file.name.split('.')[0]
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
-    function closeModal() {
-        document.getElementById('modal').classList.remove('active');
-        setTimeout(() => {
-            document.getElementById('modalOverlay').style.display = 'none';
-            spinBtn.disabled = false;
-        }, 300);
+    document.getElementById('upload').addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        document.getElementById('status').innerText = "處理中...";
+        for (let file of files) {
+            const data = await processImage(file);
+            photoTextures.push(data);
+        }
+        document.getElementById('status').innerText = `目前照片數：${photoTextures.length}`;
+        document.getElementById('start-btn').disabled = photoTextures.length === 0;
+        document.getElementById('start-btn').innerText = "開始抽獎！";
+    });
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+        document.getElementById('ui-layer').style.display = 'none';
+        photoTextures.forEach((data, i) => {
+            setTimeout(() => {
+                const ball = Bodies.circle(WORLD_WIDTH/2 + (Math.random()*40-20), 50, BALL_RADIUS, {
+                    restitution: 0.6,
+                    friction: 0.1,
+                    label: 'player-ball',
+                    render: {
+                        sprite: {
+                            texture: data.url,
+                            xScale: (BALL_RADIUS * 2) / 150,
+                            yScale: (BALL_RADIUS * 2) / 150
+                        }
+                    }
+                });
+                ball.playerName = data.name;
+                ball.playerImg = data.url;
+                Composite.add(engine.world, ball);
+            }, i * 300);
+        });
+    });
+
+    function announceWinner(ball) {
+        isGameOver = true;
+        const display = document.getElementById('winner-display');
+        document.getElementById('winner-img-container').innerHTML = `<img src="${ball.playerImg}">`;
+        document.getElementById('winner-name').innerText = ball.playerName;
+        display.style.display = 'block';
     }
 
-    window.onload = setupCanvas;
-    renderTags();
+    window.addEventListener('resize', () => {
+        render.canvas.width = window.innerWidth;
+        render.canvas.height = window.innerHeight;
+    });
+
+    init();
 </script>
-
 </body>
 </html>
