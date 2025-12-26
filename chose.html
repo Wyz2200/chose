@@ -3,61 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 9.0 - 手機優化版</title>
+    <title>物理抽獎 10.0 - 終極競技版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { --main: #00ffa2; --bg: #050505; }
-        body { margin: 0; background: var(--bg); font-family: sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        body { margin: 0; background: var(--bg); font-family: "PingFang TC", sans-serif; overflow: hidden; position: fixed; width: 100%; height: 100%; color: #eee; }
         
-        /* 手機版 UI 調整 */
-        #ui-panel { position: fixed; left: 5%; top: 10px; width: 90%; max-height: 40vh; background: rgba(20,20,20,0.95); border-radius: 12px; padding: 15px; z-index: 100; border: 1px solid #444; overflow-y: auto; box-sizing: border-box; }
-        .player-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; background: #1a1a1a; padding: 5px; border-radius: 8px; }
+        /* UI 面板 */
+        #ui-panel { position: fixed; left: 10px; top: 10px; width: calc(100% - 130px); max-height: 35vh; background: rgba(20,20,20,0.9); border-radius: 15px; padding: 15px; z-index: 100; border: 1px solid #333; backdrop-filter: blur(10px); overflow-y: auto; }
+        .player-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; background: #1a1a1a; padding: 8px; border-radius: 10px; border: 1px solid #444; }
         .player-row img { width: 30px; height: 30px; border-radius: 50%; }
-        .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 12px; }
-        #btn-start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; }
+        .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 13px; outline: none; }
+        #btn-start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
         
-        /* 排行榜縮小避免擋到 */
-        #leaderboard { position: fixed; right: 10px; top: 10px; width: 100px; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 12px; z-index: 90; font-size: 10px; }
-        .rank-item img { width: 25px; height: 25px; border-radius: 50%; }
-        
-        #win-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 30px; border-radius: 20px; display: none; flex-direction: column; align-items: center; z-index: 200; width: 80%; text-align: center; }
-        #win-popup img { width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--main); }
+        /* 右上角即時排行榜 */
+        #leaderboard { position: fixed; right: 10px; top: 10px; width: 100px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; }
+        .rank-item { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; text-align: center; }
+        .rank-item img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--main); }
+        .rank-name { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: 2px; }
 
-        canvas { display: block; margin: 0 auto; }
+        /* 中獎彈窗 */
+        #win-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 30px; border-radius: 25px; display: none; flex-direction: column; align-items: center; z-index: 200; width: 70%; text-align: center; box-shadow: 0 0 50px var(--main); }
+        #win-popup img { width: 120px; height: 120px; border-radius: 50%; border: 5px solid var(--main); margin-bottom: 15px; }
+        .btn-retry { padding: 10px 30px; background: #000; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="ui-panel">
-    <div style="color:var(--main); margin-bottom: 10px; font-weight: bold;">物理抽獎 9.0</div>
-    <input type="file" id="file-input" multiple accept="image/*" style="width: 100%; color: #888; margin-bottom: 10px;">
+    <div style="font-size: 14px; color: var(--main); margin-bottom: 10px; font-weight: bold;">物理抽獎 10.0</div>
+    <input type="file" id="file-input" multiple accept="image/*" style="font-size: 11px; margin-bottom: 10px; width: 100%;">
     <div id="list-area"></div>
-    <button id="btn-start" disabled>開始抽獎！</button>
+    <button id="btn-start" disabled>確認名單並發射！</button>
 </div>
 
 <div id="leaderboard">
+    <div style="font-size: 9px; color: #888; text-align: center; margin-bottom: 8px;">RANKING</div>
     <div id="rank-list"></div>
 </div>
 
 <div id="win-popup">
+    <h2 style="margin:0; font-size: 18px; color: #666;">優勝者獲選！</h2>
     <div id="win-avatar"></div>
-    <h1 id="win-name" style="margin:10px 0;"></h1>
-    <button style="padding:10px 20px; background:#000; color:#fff; border-radius:5px;" onclick="location.reload()">重新開始</button>
+    <h1 id="win-name" style="margin:5px 0 15px 0; font-size: 28px;"></h1>
+    <button class="btn-retry" onclick="resetGame()">重新挑戰</button>
 </div>
 
 <script>
 const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
-const GAME_W = 400; // 固定遊戲寬度，方便手機顯示
-const GAME_H = 8000;
-let BALL_R = 18; // 縮小球體，避免手機上太擁擠
-let engine, render, players = [], isGaming = false;
+const W = 400, H = 10000; 
+let BALL_R = 22;
+let engine, render, runner, players = [], isGaming = false;
 
 function init() {
     engine = Engine.create();
-    
-    // 計算縮放比例以適應手機螢幕
-    const scale = window.innerWidth / GAME_W;
-    
     render = Render.create({
         element: document.body,
         engine: engine,
@@ -66,105 +65,93 @@ function init() {
             height: window.innerHeight, 
             wireframes: false, 
             background: '#050505',
-            hasBounds: true
+            hasBounds: true 
         }
     });
 
     const obs = [];
-    
-    // --- 隨機關卡設計 ---
-    for (let y = 600; y < GAME_H - 1000; y += 450) {
-        const type = Math.floor(Math.random() * 4);
-        
-        if (type === 0) { // 快速旋轉風扇
-            const x = GAME_W / 2;
-            const fan = Bodies.rectangle(x, y, 200, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#ff4b2b' } });
-            const p = Constraint.create({ pointA: { x: x, y: y }, bodyB: fan, stiffness: 1 });
-            obs.push(fan, p);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(fan, 0.15));
-        } else if (type === 1) { // 藍色移動跳板 (解決你說的停留問題)
-            const x = GAME_W / 2;
-            const mover = Bodies.rectangle(x, y, 150, 20, { 
-                isStatic: true, 
-                restitution: 1.2, // 增加彈力
-                render: { fillStyle: '#00ccff' } 
-            });
+    const blockColor = '#1a1a1a';
+
+    // --- 混合多樣化關卡設計 ---
+    for (let y = 700; y < H - 1000; y += 450) {
+        const type = Math.floor(Math.random() * 5);
+        const xMid = W / 2;
+
+        if (type === 0) { // 經典：擺動大斜板
+            const plank = Bodies.rectangle(xMid, y, 280, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#333' } });
+            const pivot = Constraint.create({ pointA: { x: xMid, y: y }, bodyB: plank, stiffness: 0.1 });
+            obs.push(plank, pivot);
+        } else if (type === 1) { // 經典：旋轉十字星
+            const star = Bodies.rectangle(xMid, y, 200, 20, { chamfer: { radius: 10 }, render: { fillStyle: '#ff4b2b' } });
+            const p = Constraint.create({ pointA: { x: xMid, y: y }, bodyB: star, stiffness: 1 });
+            obs.push(star, p);
+            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, 0.08));
+        } else if (type === 2) { // 更新：旋轉齒輪 (取代卡球點點)
+            for(let i=0; i<2; i++) {
+                const gx = i === 0 ? 100 : 300;
+                const gear = Bodies.polygon(gx, y, 5, 40, { isStatic: true, render: { fillStyle: '#555' } });
+                obs.push(gear);
+                Events.on(engine, 'beforeUpdate', () => Body.setAngle(gear, gear.angle + 0.05));
+            }
+        } else if (type === 3) { // 修正：藍色動態跳板 (會左右動且有彈力)
+            const mover = Bodies.rectangle(xMid, y, 160, 20, { isStatic: true, restitution: 1.5, render: { fillStyle: '#00ccff' } });
             obs.push(mover);
             Events.on(engine, 'beforeUpdate', () => {
-                const time = engine.timing.timestamp * 0.005;
-                Body.setPosition(mover, { x: GAME_W/2 + Math.sin(time) * 100, y: y });
+                Body.setPosition(mover, { x: xMid + Math.sin(engine.timing.timestamp * 0.004) * 100, y: y });
             });
-        } else if (type === 2) { // 狹窄亂石陣
-            for(let i=0; i<5; i++) {
-                obs.push(Bodies.circle(Math.random()*GAME_W, y + (i*40), 15, { isStatic: true, render: { fillStyle: '#444' } }));
-            }
-        } else { // 左右交替斜坡
-            const side = (y % 900 === 0);
-            obs.push(Bodies.rectangle(side ? 0 : GAME_W, y, 300, 25, { isStatic: true, angle: side ? 0.4 : -0.4, render: { fillStyle: '#1a1a1a' } }));
+        } else { // 兩側大型斜坡
+            obs.push(
+                Bodies.rectangle(80, y, 250, 25, { isStatic: true, angle: 0.5, render: { fillStyle: blockColor } }),
+                Bodies.rectangle(320, y+100, 250, 25, { isStatic: true, angle: -0.5, render: { fillStyle: blockColor } })
+            );
         }
     }
 
-    // --- 終點前大缺口導流板 (解決白色V形卡球問題) ---
-    // 我們不把它連在一起，中間留一個 100px 的大洞
+    // --- 終點前 V 形導流 (大缺口版，絕對不卡球) ---
     obs.push(
-        Bodies.rectangle(50, GAME_H - 600, 250, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#fff' } }),
-        Bodies.rectangle(350, GAME_H - 600, 250, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#fff' } })
+        Bodies.rectangle(60, H-600, 260, 40, { isStatic: true, angle: 0.7, render: { fillStyle: '#fff' } }),
+        Bodies.rectangle(340, H-600, 260, 40, { isStatic: true, angle: -0.7, render: { fillStyle: '#fff' } })
     );
 
-    // 終點線
-    const goal = Bodies.rectangle(GAME_W/2, GAME_H - 50, GAME_W, 100, { 
-        isStatic: true, 
-        label: 'goal', 
-        render: { fillStyle: '#00ffa2' } 
-    });
-
-    // 邊界
+    const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
     const walls = [
-        Bodies.rectangle(-20, GAME_H/2, 40, GAME_H, { isStatic: true, render: { fillStyle: '#111' } }),
-        Bodies.rectangle(GAME_W+20, GAME_H/2, 40, GAME_H, { isStatic: true, render: { fillStyle: '#111' } }),
+        Bodies.rectangle(-20, H/2, 45, H, { isStatic: true, render: { fillStyle: '#111' } }),
+        Bodies.rectangle(W+20, H/2, 45, H, { isStatic: true, render: { fillStyle: '#111' } }),
         goal
     ];
 
     Composite.add(engine.world, [...walls, ...obs]);
     Render.run(render);
-    Runner.run(Runner.create(), engine);
+    runner = Runner.create();
+    Runner.run(runner, engine);
 
-    // 鏡頭控制與 UI 更新
     Events.on(render, 'afterRender', () => {
         const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
         if (!balls.length) return;
-
         const sorted = [...balls].sort((a, b) => b.position.y - a.position.y);
         
-        // 更新排行榜
+        // 排行榜更新 (名字顯示)
         document.getElementById('rank-list').innerHTML = sorted.slice(0, 3).map((b, i) => `
-            <div class="rank-item" style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
-                <span style="color:#00ffa2">${i+1}</span>
+            <div class="rank-item">
                 <img src="${b.pUrl}">
+                <div class="rank-name">${b.pName}</div>
             </div>
         `).join('');
 
-        // 鏡頭鎖定
-        const lead = sorted[0];
+        // 鏡頭跟隨
         const vh = render.options.height;
-        // 加上縮放修正，讓鏡頭保持在畫面中央
-        let ty = lead.position.y - (vh / 2);
-        ty = Math.min(Math.max(0, ty), GAME_H - vh);
-        
-        render.bounds.min.y = ty;
-        render.bounds.max.y = ty + vh;
-        render.bounds.min.x = (GAME_W - (window.innerWidth / scale)) / 2;
-        render.bounds.max.x = render.bounds.min.x + (window.innerWidth / scale);
+        const scale = window.innerWidth / W;
+        let ty = sorted[0].position.y - vh/2;
+        ty = Math.min(Math.max(0, ty), H - vh);
+        render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
+        render.bounds.min.x = 0; render.bounds.max.x = W;
     });
 
     Events.on(engine, 'collisionStart', (e) => {
         e.pairs.forEach(p => {
             if ((p.bodyA.label === 'goal' || p.bodyB.label === 'goal') && isGaming) {
                 const b = p.bodyA.label === 'p' ? p.bodyA : (p.bodyB.label === 'p' ? p.bodyB : null);
-                if (b) {
-                    isGaming = false;
-                    showWin(b);
-                }
+                if (b) { isGaming = false; showWin(b); }
             }
         });
     });
@@ -191,15 +178,15 @@ async function prepImg(file) {
 
 document.getElementById('file-input').addEventListener('change', async (e) => {
     const fs = Array.from(e.target.files);
-    const area = document.getElementById('list-area');
     for (let f of fs) {
         const url = await prepImg(f);
-        const id = Math.random(), name = f.name.split('.')[0];
+        const name = f.name.split('.')[0];
+        const id = Math.random();
         players.push({ id, url, name });
         const d = document.createElement('div');
         d.className = 'player-row';
         d.innerHTML = `<img src="${url}"><input type="text" value="${name}" oninput="players.find(p=>p.id===${id}).name=this.value">`;
-        area.appendChild(d);
+        document.getElementById('list-area').appendChild(d);
     }
     document.getElementById('btn-start').disabled = false;
 });
@@ -208,8 +195,8 @@ document.getElementById('btn-start').addEventListener('click', () => {
     isGaming = true;
     document.getElementById('ui-panel').style.display = 'none';
     players.forEach((p, i) => {
-        const b = Bodies.circle(GAME_W/2 + (Math.random()*20-10), -i*60, BALL_R, {
-            restitution: 0.6, friction: 0.01, label: 'p',
+        const b = Bodies.circle(W/2 + (Math.random()*30-15), -i*65, BALL_R, {
+            restitution: 0.5, friction: 0.01, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/200, yScale: (BALL_R*2)/200 } }
         });
         b.pName = p.name; b.pUrl = p.url;
@@ -218,10 +205,20 @@ document.getElementById('btn-start').addEventListener('click', () => {
 });
 
 function showWin(b) {
-    const pop = document.getElementById('win-popup');
     document.getElementById('win-avatar').innerHTML = `<img src="${b.pUrl}">`;
     document.getElementById('win-name').innerText = b.pName;
-    pop.style.display = 'flex';
+    document.getElementById('win-popup').style.display = 'flex';
+}
+
+function resetGame() {
+    // 移除畫面上所有的球
+    const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
+    Composite.remove(engine.world, balls);
+    
+    // 隱藏彈窗，顯示面板（此時 players 名單還在）
+    document.getElementById('win-popup').style.display = 'none';
+    document.getElementById('ui-panel').style.display = 'block';
+    isGaming = false;
 }
 
 init();
