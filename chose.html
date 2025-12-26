@@ -89,11 +89,14 @@ function init() {
         }
     }
 
-    // 終點前漏斗
+    // 終點前漏斗 - 已加大開口防止卡球
     obs.push(
-        Bodies.rectangle(150, H-500, 400, 40, { isStatic: true, angle: 0.7, render: { fillStyle: '#fff' } }),
-        Bodies.rectangle(450, H-500, 400, 40, { isStatic: true, angle: -0.7, render: { fillStyle: '#fff' } })
+        // 左側板：往左移 (從150變100)，角度調平一點 (從0.7變0.5)
+        Bodies.rectangle(100, H-500, 300, 40, { isStatic: true, angle: 0.5, render: { fillStyle: '#fff' } }),
+        // 右側板：往右移 (從450變500)，角度調平一點 (從-0.7變-0.5)
+        Bodies.rectangle(500, H-500, 300, 40, { isStatic: true, angle: -0.5, render: { fillStyle: '#fff' } })
     );
+
 
     const walls = [
         Bodies.rectangle(-20, H/2, 40, H, { isStatic: true, render: { fillStyle: '#111' } }),
