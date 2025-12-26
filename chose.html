@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 13.0 - IG 頭像修復版</title>
+    <title>物理抽獎 13.0 - IG 最終修復版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { --main: #00ffa2; --bg: #050505; }
@@ -14,7 +14,6 @@
         .player-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #555; background: #222; }
         .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 13px; outline: none; }
         #btn-start { width: 100%; padding: 12px; background: var(--main); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        #btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #leaderboard { position: fixed; right: 10px; top: 10px; width: 100px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); z-index: 100; }
         .rank-item { display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; position: relative; }
@@ -39,7 +38,6 @@
 </div>
 
 <div id="leaderboard">
-    <div style="font-size: 9px; color:#888; text-align:center; margin-bottom:5px;">LEADERS</div>
     <div id="rank-list"></div>
 </div>
 
@@ -55,6 +53,9 @@ const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = 
 const W = 400, H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 
+// 關鍵修復：改用魔術代理服務
+const GET_AVATAR = (user) => `https://wsrv.nl/?url=https://unavatar.io/instagram/${user}&w=200&h=200&mask=circle&output=png`;
+
 function init() {
     engine = Engine.create();
     render = Render.create({
@@ -65,53 +66,30 @@ function init() {
     const obs = [];
     const SAFE_GAP = BALL_R * 2.5;
 
-    for (let y = 500; y < H; y += 180) {
-        const r = 15 + Math.random() * 20;
-        obs.push(Bodies.circle(-5, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
-                 Bodies.circle(W+5, y + 90, r, { isStatic: true, render: { fillStyle: '#222' } }));
-    }
-
-    for (let y = 800; y < H - 1000; y += 350) {
-        const type = Math.floor(Math.random() * 8);
-        const xCenter = W / 2, safeX = SAFE_GAP + Math.random() * (W - 2 * SAFE_GAP);
-
-        if (type === 0) {
-            const roller = Bodies.circle(safeX, y, 45, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 4 } });
-            obs.push(roller);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.15));
-        } else if (type === 1) {
-            const gL = Bodies.rectangle(xCenter - 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
-            const gR = Bodies.rectangle(xCenter + 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
-            obs.push(gL, gR);
-            Events.on(engine, 'beforeUpdate', () => {
-                const move = Math.sin(engine.timing.timestamp * 0.003) * 60;
-                Body.setPosition(gL, { x: xCenter - 120 + move, y: y });
-                Body.setPosition(gR, { x: xCenter + 120 - move, y: y });
-            });
-        } else if (type === 2) {
-            const star = Bodies.rectangle(xCenter, y, 170, 15, { chamfer: { radius: 7 }, render: { fillStyle: '#ff4b2b' } });
-            obs.push(star, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: star, stiffness: 1 }));
+    // 隨機障礙物邏輯
+    for (let y = 500; y < H - 1000; y += 350) {
+        const type = Math.floor(Math.random() * 6);
+        const x = SAFE_GAP + Math.random() * (W - 2 * SAFE_GAP);
+        if (type === 0) obs.push(Bodies.circle(x, y, 40, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 3 } }));
+        else if (type === 1) {
+            const star = Bodies.rectangle(W/2, y, 160, 15, { isStatic: false, render: { fillStyle: '#ff4b2b' } });
+            obs.push(star, Constraint.create({ pointA: { x: W/2, y: y }, bodyB: star, stiffness: 1 }));
             Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, 0.08));
-        } else if (type === 3) {
-            obs.push(Bodies.rectangle(Math.random() > 0.5 ? 100 : 300, y, 180, 20, { isStatic: true, angle: 0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } }));
-        } else if (type === 4) {
-            for(let i=0; i<4; i++) obs.push(Bodies.circle(70 + (i*85), y + (i%2*40), 12, { isStatic: true, render: { fillStyle: '#777' } }));
-        } else if (type === 5) {
-            const tri = Bodies.polygon(safeX, y, 3, 48, { isStatic: true, render: { fillStyle: '#9c27b0' } });
+        } else if (type === 2) {
+            const tri = Bodies.polygon(x, y, 3, 45, { isStatic: true, render: { fillStyle: '#9c27b0' } });
             obs.push(tri);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.08));
-        } else if (type === 6) {
-            const wall = Bodies.rectangle(xCenter, y, 140, 40, { isStatic: true, render: { fillStyle: '#444' } });
-            obs.push(wall);
-            Events.on(engine, 'beforeUpdate', () => Body.setPosition(wall, { x: xCenter + Math.sin(engine.timing.timestamp * 0.002) * 120, y: y }));
+            Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle + 0.05));
         } else {
-            const plank = Bodies.rectangle(xCenter, y, 240, 15, { chamfer: { radius: 5 }, render: { fillStyle: '#222' } });
-            obs.push(plank, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: plank, stiffness: 0.05 }));
+            obs.push(Bodies.circle(x, y, 15, { isStatic: true, render: { fillStyle: '#555' } }));
         }
     }
 
     const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
-    Composite.add(engine.world, [Bodies.rectangle(-22, H/2, 45, H, { isStatic: true }), Bodies.rectangle(W+22, H/2, 45, H, { isStatic: true }), goal, ...obs]);
+    Composite.add(engine.world, [
+        Bodies.rectangle(-22, H/2, 45, H, { isStatic: true }), 
+        Bodies.rectangle(W+22, H/2, 45, H, { isStatic: true }), 
+        goal, ...obs
+    ]);
 
     Render.run(render);
     Runner.run(Runner.create(), engine);
@@ -126,7 +104,6 @@ function init() {
         const vh = render.options.height;
         let ty = Math.min(Math.max(0, sorted[0].position.y - vh/2), H - vh);
         render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
-        render.bounds.min.x = 0; render.bounds.max.x = W;
     });
 
     Events.on(engine, 'collisionStart', (e) => {
@@ -139,52 +116,44 @@ function init() {
     });
 }
 
-// 修復：處理跨域並裁切圓形圖片
-async function processExternalImg(avatarUrl) {
+// 這是讓圖片「合法化」的關鍵：將代理網址畫到畫布上，變成 DataURL
+async function getSecureImage(url) {
     return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        img.crossOrigin = "anonymous"; 
         img.onload = () => {
             const c = document.createElement('canvas');
-            c.width = c.height = 300;
-            const x = c.getContext('2d');
-            x.beginPath(); x.arc(150, 150, 150, 0, Math.PI * 2); x.clip();
-            const s = Math.min(img.width, img.height);
-            x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 300, 300);
+            c.width = c.height = 200;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, 200, 200);
             resolve(c.toDataURL());
         };
-        img.onerror = () => resolve("https://www.gravatar.com/avatar/0?d=mp"); // 失敗則用預設圖
-        img.src = avatarUrl;
+        img.onerror = () => resolve("https://www.gravatar.com/avatar/0?d=mp");
+        img.src = url;
     });
 }
 
 async function handlePlayerInput(el, id) {
     const val = el.value.trim();
     const player = players.find(p => p.id === id);
-    if (!player) return;
-
     if (val.includes('instagram.com')) {
         const username = val.split('instagram.com/')[1]?.split('/')[0]?.split('?')[0];
         if (username) {
-            el.value = "獲取中...";
-            // 使用穩定代理
-            const apiUrl = `https://unavatar.io/instagram/${username}`;
-            const processedUrl = await processExternalImg(apiUrl);
-            
-            player.url = processedUrl;
+            el.value = "處理中...";
+            const proxyUrl = GET_AVATAR(username);
+            const finalDataUrl = await getSecureImage(proxyUrl);
+            player.url = finalDataUrl;
             player.name = username;
             el.value = username;
-            document.querySelector(`img[data-id="${id}"]`).src = processedUrl;
+            document.querySelector(`img[data-id="${id}"]`).src = finalDataUrl;
         }
-    } else {
-        player.name = val;
-    }
+    } else { player.name = val; }
 }
 
 function addPlayerRow(id, url = "https://www.gravatar.com/avatar/0?d=mp", name = "") {
     const d = document.createElement('div');
     d.className = 'player-row';
-    d.innerHTML = `<img src="${url}" data-id="${id}"><input type="text" value="${name}" data-id="${id}" placeholder="貼上 IG 連結或名字" oninput="handlePlayerInput(this, ${id})">`;
+    d.innerHTML = `<img src="${url}" data-id="${id}"><input type="text" value="${name}" data-id="${id}" placeholder="貼上 IG 連結" oninput="handlePlayerInput(this, ${id})">`;
     document.getElementById('list-area').appendChild(d);
     document.getElementById('btn-start').disabled = false;
 }
@@ -195,31 +164,15 @@ document.getElementById('add-player').addEventListener('click', () => {
     addPlayerRow(id);
 });
 
-async function prepImg(file) {
-    return new Promise(res => {
-        const r = new FileReader();
-        r.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const c = document.createElement('canvas');
-                c.width = c.height = 300;
-                const x = c.getContext('2d');
-                x.beginPath(); x.arc(150, 150, 150, 0, Math.PI*2); x.clip();
-                const s = Math.min(img.width, img.height);
-                x.drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, 300, 300);
-                res(c.toDataURL());
-            };
-            img.src = e.target.result;
-        };
-        r.readAsDataURL(file);
-    });
-}
-
 document.getElementById('file-input').addEventListener('change', async (e) => {
     for (let f of Array.from(e.target.files)) {
-        const url = await prepImg(f), name = f.name.split('.')[0], id = Math.random();
-        players.push({ id, url, name });
-        addPlayerRow(id, url, name);
+        const r = new FileReader();
+        r.onload = (ev) => {
+            const id = Math.random();
+            players.push({ id, url: ev.target.result, name: f.name.split('.')[0] });
+            addPlayerRow(id, ev.target.result, f.name.split('.')[0]);
+        };
+        r.readAsDataURL(f);
     }
 });
 
@@ -229,9 +182,9 @@ document.getElementById('btn-start').addEventListener('click', () => {
     players.forEach((p, i) => {
         const row = Math.floor(i / ballsPerRow), col = i % ballsPerRow;
         const startX = (W - (Math.min(players.length, ballsPerRow) * spacingX)) / 2 + (spacingX / 2);
-        const b = Bodies.circle(startX + col * spacingX, 100 - (row * 50), BALL_R, {
+        const b = Bodies.circle(startX + col * spacingX, 100 - (row * 60), BALL_R, {
             restitution: 0.5, friction: 0.01, label: 'p',
-            render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
+            render: { sprite: { texture: p.url, xScale: (BALL_R*2)/200, yScale: (BALL_R*2)/200 } }
         });
         b.pName = p.name || "匿名者"; b.pUrl = p.url;
         Composite.add(engine.world, b);
@@ -245,11 +198,9 @@ function showWin(b) {
 }
 
 function resetGame() {
-    Composite.remove(engine.world, Composite.allBodies(engine.world).filter(b => b.label === 'p'));
-    document.getElementById('win-popup').style.display = 'none';
-    document.getElementById('ui-panel').style.display = 'block';
-    isGaming = false;
+    location.reload(); // 重新整理最保險
 }
+
 init();
 </script>
 </body>
