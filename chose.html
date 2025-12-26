@@ -195,16 +195,42 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 });
 
 document.getElementById('btn-start').addEventListener('click', () => {
-    isGaming = true; document.getElementById('ui-panel').style.display = 'none';
+    isGaming = true; 
+    document.getElementById('ui-panel').style.display = 'none';
+    
+    const startY = 100; // 起點垂直位置
+    const spacingX = BALL_R * 2.2; // 橫向間距，留一點點縫隙避免卡住
+    const ballsPerRow = Math.floor((W - 40) / spacingX); // 根據寬度計算每排可以放幾個
+    
     players.forEach((p, i) => {
-        const b = Bodies.circle(W/2 + (Math.random()*40-20), -i*65, BALL_R, {
-            restitution: 0.5, friction: 0.01, label: 'p',
-            render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
+        // 計算網格座標
+        const row = Math.floor(i / ballsPerRow);
+        const col = i % ballsPerRow;
+        
+        // 居中對齊計算
+        const rowWidth = Math.min(players.length, ballsPerRow) * spacingX;
+        const startX = (W - rowWidth) / 2 + (spacingX / 2);
+
+        const b = Bodies.circle(startX + col * spacingX, startY - (row * spacingX), BALL_R, {
+            restitution: 0.6, // 稍微增加彈性，增加隨機性
+            friction: 0.005, 
+            frictionAir: 0.001,
+            label: 'p',
+            render: { 
+                sprite: { 
+                    texture: p.url, 
+                    xScale: (BALL_R * 2) / 300, 
+                    yScale: (BALL_R * 2) / 300 
+                } 
+            }
         });
-        b.pName = p.name; b.pUrl = p.url;
+        
+        b.pName = p.name; 
+        b.pUrl = p.url;
         Composite.add(engine.world, b);
     });
 });
+
 
 function showWin(b) {
     document.getElementById('win-avatar').innerHTML = `<img src="${b.pUrl}">`;
