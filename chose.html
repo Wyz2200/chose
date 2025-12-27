@@ -73,64 +73,75 @@ function init() {
 
     const obs = [];
 
-    // 1. 恢復原本大小的邊界半月牆
+    // 1. 強化邊界：除了半月牆，額外增加「防直衝斜板」
     for (let y = 500; y < H; y += 180) {
-        const r = 15 + Math.random() * 20; // 恢復原本的半徑範圍
+        const r = 15 + Math.random() * 20;
         obs.push(
             Bodies.circle(0, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
             Bodies.circle(W, y + 90, r, { isStatic: true, render: { fillStyle: '#222' } })
         );
-        // 原本的小斜板擾流也恢復
-        if (y % 360 === 0) {
-            obs.push(Bodies.rectangle(15, y+45, 45, 10, { isStatic: true, angle: 0.5, render: { fillStyle: '#222' } }));
-            obs.push(Bodies.rectangle(W-15, y+45, 45, 10, { isStatic: true, angle: -0.5, render: { fillStyle: '#222' } }));
+        
+        // 【新增】每隔一段距離，在牆邊伸出一個導流板，強制球往中央彈
+        if (y % 400 === 0) {
+            const side = Math.random() > 0.5;
+            obs.push(Bodies.rectangle(side ? 30 : W - 30, y + 45, 100, 15, { 
+                isStatic: true, 
+                angle: side ? 0.7 : -0.7, 
+                restitution: 1.2,
+                render: { fillStyle: '#00ffa2', opacity: 0.5 } 
+            }));
         }
     }
 
-    // 2. 隨機機關 (X 座標避開牆邊的大半月區域)
-    for (let y = 800; y < H - 1000; y += 350) {
-        const type = Math.floor(Math.random() * 8);
+    // 2. 升級版隨機機關 (間距縮短為 300，種類增加)
+    for (let y = 800; y < H - 1000; y += 300) {
+        const type = Math.floor(Math.random() * 9);
         const xCenter = W / 2;
-        // 核心改動：將機關鎖定在賽道中間區域，避免與大半月形成夾角
-        const safeX = OBSTACLE_SAFE_GAP + Math.random() * (W - 2 * OBSTACLE_SAFE_GAP);
+        const safeX = 100 + Math.random() * (W - 200);
 
-        if (type === 0) { // 旋轉筒
-            const rollerR = 35;
-            const roller = Bodies.circle(safeX, y, rollerR, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 4 } });
+        if (type === 0) { // 八角齒輪
+            const roller = Bodies.polygon(safeX, y, 8, 40, { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#00ffa2', lineWidth: 3 } });
             obs.push(roller);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.15));
-        } else if (type === 1) { // 伸縮閘門
-            const gL = Bodies.rectangle(xCenter - 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
-            const gR = Bodies.rectangle(xCenter + 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ffde00' } });
+            Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.1));
+        } else if (type === 1) { // 全寬度伸縮閘門 (從兩邊往中間夾)
+            const gL = Bodies.rectangle(0, y, 160, 20, { isStatic: true, render: { fillStyle: '#ffde00' } });
+            const gR = Bodies.rectangle(W, y, 160, 20, { isStatic: true, render: { fillStyle: '#ffde00' } });
             obs.push(gL, gR);
             Events.on(engine, 'beforeUpdate', () => {
-                const move = Math.sin(engine.timing.timestamp * 0.003) * 60;
-                Body.setPosition(gL, { x: xCenter - 120 + move, y: y });
-                Body.setPosition(gR, { x: xCenter + 120 - move, y: y });
+                const move = Math.sin(engine.timing.timestamp * 0.002) * 100;
+                Body.setPosition(gL, { x: -30 + move, y: y });
+                Body.setPosition(gR, { x: W + 30 - move, y: y });
             });
-        } else if (type === 2) { // 螺旋槳
-            const star = Bodies.rectangle(xCenter, y, 170, 15, { chamfer: { radius: 7 }, render: { fillStyle: '#ff4b2b' } });
+        } else if (type === 2) { // 大型長條螺旋槳
+            const star = Bodies.rectangle(xCenter, y, 220, 12, { render: { fillStyle: '#ff4b2b' } });
             obs.push(star, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: star, stiffness: 1 }));
-            const spd = (0.05 + Math.random() * 0.1) * (Math.random() > 0.5 ? 1 : -1);
+            const spd = (0.08) * (Math.random() > 0.5 ? 1 : -1);
             Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, spd));
-        } else if (type === 3) { // 彈力斜板 (稍作調整確保不夾球)
+        } else if (type === 3) { // 牆邊強力彈墊
             const side = Math.random() > 0.5;
-            obs.push(Bodies.rectangle(side ? 100 : 300, y, 180, 20, { isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } }));
-        } else if (type === 4) { // 針刺陣
-            const dots = 3;
-            const spacing = W / (dots + 1);
-            for(let i=1; i<=dots; i++) obs.push(Bodies.circle(i * spacing, y, 12, { isStatic: true, render: { fillStyle: '#777' } }));
-        } else if (type === 5) { // 三角攪拌
-            const tri = Bodies.polygon(safeX, y, 3, 48, { isStatic: true, render: { fillStyle: '#9c27b0' } });
+            obs.push(Bodies.rectangle(side ? 50 : W-50, y, 100, 20, { 
+                isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.5, render: { fillStyle: '#00ccff' } 
+            }));
+        } else if (type === 4) { // 密集交錯釘床
+            for(let i=0; i<4; i++) obs.push(Bodies.circle(60 + i*(W/4), y, 12, { isStatic: true, render: { fillStyle: '#777' } }));
+            for(let i=0; i<3; i++) obs.push(Bodies.circle(W/2 - 50 + i*50, y + 100, 12, { isStatic: true, render: { fillStyle: '#777' } }));
+        } else if (type === 5) { // 快速旋轉三角
+            const tri = Bodies.polygon(safeX, y, 3, 55, { isStatic: true, render: { fillStyle: '#9c27b0' } });
             obs.push(tri);
-            Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.08));
-        } else if (type === 6) { // 推擠塊
-            const wall = Bodies.rectangle(xCenter, y, 140, 40, { isStatic: true, render: { fillStyle: '#444' } });
-            obs.push(wall);
-            Events.on(engine, 'beforeUpdate', () => Body.setPosition(wall, { x: xCenter + Math.sin(engine.timing.timestamp * 0.002) * 100, y: y }));
-        } else { // 擺動板
-            const plank = Bodies.rectangle(xCenter, y, 240, 15, { chamfer: { radius: 5 }, render: { fillStyle: '#222' } });
-            obs.push(plank, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: plank, stiffness: 0.05 }));
+            Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.12));
+        } else if (type === 6) { // 橫向掃掠塊
+            const bar = Bodies.rectangle(xCenter, y, 150, 35, { isStatic: true, render: { fillStyle: '#eee' } });
+            obs.push(bar);
+            Events.on(engine, 'beforeUpdate', () => Body.setPosition(bar, { x: xCenter + Math.sin(engine.timing.timestamp * 0.004) * 120, y: y }));
+        } else if (type === 7) { // 雙重漏斗
+            obs.push(
+                Bodies.rectangle(80, y, 150, 20, { isStatic: true, angle: 0.6, render: { fillStyle: '#444' } }),
+                Bodies.rectangle(W-80, y, 150, 20, { isStatic: true, angle: -0.6, render: { fillStyle: '#444' } })
+            );
+        } else { // 隨機漂浮圓球陣
+            for(let i=0; i<3; i++) {
+                obs.push(Bodies.circle(Math.random()*W, y + i*40, 20, { isStatic: true, restitution: 1.2, render: { fillStyle: '#555' } }));
+            }
         }
     }
 
