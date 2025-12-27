@@ -57,7 +57,8 @@
 
 <script>
 const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
-const W = 400, H = 10000;
+const W = window.innerWidth;
+const H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 
 // 為了避開大半月牆，機關的安全區域要縮小一點
@@ -164,7 +165,6 @@ function init() {
         const vh = render.options.height;
         let ty = Math.min(Math.max(0, sorted[0].position.y - vh/2), H - vh);
         render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
-        render.bounds.min.x = 0; render.bounds.max.x = W;
     });
 
     Events.on(engine, 'collisionStart', (e) => {
