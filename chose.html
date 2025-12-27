@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>物理抽獎 13.0 - 瘋狂旋轉發射版</title>
+    <title>物理抽獎 13.0 - 視覺優化版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { --main: #00ffa2; --bg: #050505; }
@@ -58,8 +58,10 @@
 const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
 const W = 400, H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
-let grandContainer = null; // 大球容器
+let grandContainer = null; 
 
+// 大球的中心點，現在下移到 600
+const CONTAINER_Y = 600; 
 const OBSTACLE_SAFE_GAP = 85; 
 
 function init() {
@@ -72,7 +74,8 @@ function init() {
 
     const obs = [];
 
-    for (let y = 500; y < H; y += 180) {
+    // 障礙物從 1000 開始生成，避開大球區域
+    for (let y = 1000; y < H; y += 180) {
         const r = 15 + Math.random() * 20;
         obs.push(
             Bodies.circle(0, y, r, { isStatic: true, render: { fillStyle: '#222' } }),
@@ -84,7 +87,8 @@ function init() {
         }
     }
 
-    for (let y = 800; y < H - 1000; y += 350) {
+    // 隨機機關
+    for (let y = 1200; y < H - 1000; y += 350) {
         const type = Math.floor(Math.random() * 8);
         const xCenter = W / 2;
         const safeX = OBSTACLE_SAFE_GAP + Math.random() * (W - 2 * OBSTACLE_SAFE_GAP);
@@ -144,12 +148,16 @@ function init() {
     Render.run(render);
     Runner.run(Runner.create(), engine);
 
-    // --- 大球旋轉與視野跟隨 ---
     Events.on(render, 'afterRender', () => {
         const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
-        if (!balls.length) return;
+        if (!balls.length) {
+            // 沒球時鏡頭停在 Container 位置
+            const vh = render.options.height;
+            render.bounds.min.y = Math.max(0, CONTAINER_Y - vh/2);
+            render.bounds.max.y = render.bounds.min.y + vh;
+            return;
+        }
 
-        // 如果容器存在，讓它旋轉
         if (grandContainer) {
             Body.setAngle(grandContainer, grandContainer.angle + 0.12);
         }
@@ -164,8 +172,8 @@ function init() {
         `).join('');
         
         const vh = render.options.height;
-        // 遊戲沒開始時，鏡頭盯著大球(座標 200, 200)
-        let focusY = isGaming ? sorted[0].position.y : 200;
+        // 焦點：遊戲中追球，準備時追容器
+        let focusY = isGaming ? sorted[0].position.y : CONTAINER_Y;
         let ty = Math.min(Math.max(0, focusY - vh/2), H - vh);
         render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
         render.bounds.min.x = 0; render.bounds.max.x = W;
@@ -183,11 +191,10 @@ function init() {
     createGrandContainer();
 }
 
-// 創建旋轉的大球殼
 function createGrandContainer() {
     const segments = 16;
     const radius = 130;
-    const centerX = 200, centerY = 200;
+    const centerX = 200, centerY = CONTAINER_Y;
     const parts = [];
     for (let i = 0; i < segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
@@ -229,8 +236,8 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
         const url = await prepImg(f), name = f.name.split('.')[0], id = Math.random();
         players.push({ id, url, name });
         
-        // 匯入時直接加入大球裡
-        const b = Bodies.circle(200 + (Math.random()-0.5)*50, 200 + (Math.random()-0.5)*50, BALL_R, {
+        // 加入球時圍繞 CONTAINER_Y
+        const b = Bodies.circle(200 + (Math.random()-0.5)*50, CONTAINER_Y + (Math.random()-0.5)*50, BALL_R, {
             restitution: 0.6, friction: 0.01, label: 'p',
             render: { sprite: { texture: url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
         });
@@ -250,11 +257,9 @@ document.getElementById('btn-start').addEventListener('click', () => {
     isGaming = true; 
     document.getElementById('ui-panel').style.display = 'none';
     
-    // 移除大球容器（開球！）
     Composite.remove(engine.world, grandContainer);
     grandContainer = null;
 
-    // 給小球們一個隨機的爆發力
     const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
     balls.forEach(b => {
         Body.applyForce(b, b.position, { x: (Math.random()-0.5)*0.05, y: (Math.random()-0.5)*0.05 });
@@ -275,12 +280,10 @@ function resetGame() {
     document.getElementById('ui-panel').style.display = 'block';
     isGaming = false;
     
-    // 重建大球容器
     createGrandContainer();
     
-    // 重新把原本的名單放進大球
     players.forEach(p => {
-        const b = Bodies.circle(200 + (Math.random()-0.5)*50, 200 + (Math.random()-0.5)*50, BALL_R, {
+        const b = Bodies.circle(200 + (Math.random()-0.5)*50, CONTAINER_Y + (Math.random()-0.5)*50, BALL_R, {
             restitution: 0.6, friction: 0.01, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
         });
