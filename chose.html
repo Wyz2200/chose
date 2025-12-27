@@ -56,8 +56,7 @@
 
 <script>
 const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = Matter;
-const W = window.innerWidth;
-const H = 10000;
+const W = 400, H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 
 // 為了避開大半月牆，機關的安全區域要縮小一點
@@ -139,6 +138,7 @@ function init() {
         Bodies.rectangle(50, H-600, 250, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#fff' } }),
         Bodies.rectangle(350, H-600, 250, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#fff' } })
     );
+
     const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
     Composite.add(engine.world, [
         Bodies.rectangle(-22, H/2, 45, H, { isStatic: true, render: { fillStyle: '#000' } }),
@@ -163,6 +163,7 @@ function init() {
         const vh = render.options.height;
         let ty = Math.min(Math.max(0, sorted[0].position.y - vh/2), H - vh);
         render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
+        render.bounds.min.x = 0; render.bounds.max.x = W;
     });
 
     Events.on(engine, 'collisionStart', (e) => {
