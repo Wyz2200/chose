@@ -134,39 +134,11 @@ function init() {
         }
     }
 
-// 終點 V 形（自適應寬度，貼齊左右牆）
-const V_Y = H - 600;
-const V_LEN = W * 0.6;     // 斜板長度（依寬度比例）
-const V_THICK = 40;
-const V_ANGLE = 0.8;
-
-obs.push(
-    // 左邊
-    Bodies.rectangle(
-        V_LEN / 2,
-        V_Y,
-        V_LEN,
-        V_THICK,
-        {
-            isStatic: true,
-            angle: V_ANGLE,
-            render: { fillStyle: '#fff' }
-        }
-    ),
-    // 右邊
-    Bodies.rectangle(
-        W - V_LEN / 2,
-        V_Y,
-        V_LEN,
-        V_THICK,
-        {
-            isStatic: true,
-            angle: -V_ANGLE,
-            render: { fillStyle: '#fff' }
-        }
-    )
-);
-
+    // 終點 V 形
+    obs.push(
+        Bodies.rectangle(50, H-600, 250, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#fff' } }),
+        Bodies.rectangle(350, H-600, 250, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#fff' } })
+    );
     const goal = Bodies.rectangle(W/2, H+50, W, 120, { isStatic: true, label: 'goal', render: { fillStyle: '#00ffa2' } });
     Composite.add(engine.world, [
         Bodies.rectangle(-22, H/2, 45, H, { isStatic: true, render: { fillStyle: '#000' } }),
