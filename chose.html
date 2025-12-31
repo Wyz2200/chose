@@ -7,9 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         :root { 
-            --main: #ff3333; 
-            --gold: #ffd700; 
-            --bg: #1a0505;   
+            --main: #ff3333; /* 新年紅 */
+            --gold: #ffd700; /* 節慶金 */
+            --bg: #1a0505;   /* 深紅黑背景 */
         }
         body { 
             margin: 0; 
@@ -23,6 +23,7 @@
             color: #eee; 
         }
         
+        /* UI 面板 - 新年風 */
         #ui-panel { 
             position: fixed; left: 10px; top: 10px; width: calc(100% - 130px); 
             max-height: 45vh; background: rgba(50, 0, 0, 0.9); 
@@ -35,8 +36,7 @@
             border: 1px solid rgba(255, 215, 0, 0.3); 
         }
         .player-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
-        .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 13px; outline: none; border-bottom: 1px solid transparent; }
-        .player-row input:focus { border-bottom: 1px solid var(--gold); }
+        .player-row input { background: transparent; border: none; color: #fff; width: 100%; font-size: 13px; outline: none; }
         
         #btn-start { 
             width: 100%; padding: 12px; background: linear-gradient(135deg, #ffd700, #ff8c00); 
@@ -45,14 +45,14 @@
         }
         #btn-start:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
         
+        /* 右側排行榜 */
         #leaderboard { 
-            position: fixed; right: 10px; top: 10px; width: 85px; 
+            position: fixed; right: 10px; top: 10px; width: 80px; 
             background: rgba(0,0,0,0.6); padding: 10px; border-radius: 15px; 
             border: 1px solid var(--gold); z-index: 100; 
         }
         .rank-item { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; }
         .rank-item img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #555; object-fit: cover; }
-        .rank-name { font-size: 10px; margin-top: 5px; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .rank-badge { 
             position: absolute; top: -5px; left: -5px; width: 22px; height: 22px; 
             background: var(--gold); color: #800000; border-radius: 50%; 
@@ -61,6 +61,7 @@
         }
         .rank-0 img { border-color: #ffd700; box-shadow: 0 0 15px #ffd700; }
         
+        /* 獲勝彈窗 - 新年主題 */
         #win-popup { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             background: #fff; color: #000; padding: 30px; border-radius: 25px; 
@@ -68,6 +69,7 @@
             width: 75%; text-align: center; 
             box-shadow: 0 0 100px #ff3333; border: 5px solid var(--gold);
         }
+        #win-popup::before { content: "🧧 2026 Happy New Year 🧧"; font-weight: bold; color: var(--main); margin-bottom: 10px; }
         #win-popup img { width: 160px; height: 160px; border-radius: 50%; border: 6px solid var(--main); object-fit: cover; margin-bottom: 15px; }
         .btn-retry { padding: 12px 30px; background: var(--main); color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
     </style>
@@ -76,6 +78,7 @@
 
 <div id="ui-panel">
     <div style="font-size: 18px; color: var(--gold); margin-bottom: 12px; font-weight: bold; text-align: center;">🧨 2026 新年物理抽獎 🧨</div>
+    <div style="font-size: 12px; color: #ff9999; text-align: center; margin-bottom: 10px;">馬年行大運，幸運兒是誰？</div>
     <input type="file" id="file-input" multiple accept="image/*" style="font-size: 12px; margin-bottom: 12px; width: 100%; color: #ccc;">
     <div id="list-area"></div>
     <button id="btn-start" disabled>確認名單，點火發射！</button>
@@ -99,27 +102,83 @@ const { Engine, Render, Runner, Bodies, Composite, Events, Constraint, Body } = 
 const W = 400, H = 10000;
 let BALL_R = 22, engine, render, runner, players = [], isGaming = false;
 let grandContainer = null; 
+
 const CONTAINER_Y = 600; 
+const OBSTACLE_SAFE_GAP = 85; 
 
 function init() {
     engine = Engine.create();
     render = Render.create({
         element: document.body,
         engine: engine,
-        options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: 'transparent', hasBounds: true }
+        options: { 
+            width: window.innerWidth, 
+            height: window.innerHeight, 
+            wireframes: false, 
+            background: 'transparent', 
+            hasBounds: true 
+        }
     });
 
-    // 障礙物生成與原本邏輯相同...
     const obs = [];
+
     for (let y = 1000; y < H; y += 180) {
         const r = 15 + Math.random() * 20;
         obs.push(
             Bodies.circle(0, y, r, { isStatic: true, render: { fillStyle: '#4d0000' } }),
             Bodies.circle(W, y + 90, r, { isStatic: true, render: { fillStyle: '#4d0000' } })
         );
+        if (y % 360 === 0) {
+            obs.push(Bodies.rectangle(15, y+45, 45, 10, { isStatic: true, angle: 0.5, render: { fillStyle: '#ffd700' } }));
+            obs.push(Bodies.rectangle(W-15, y+45, 45, 10, { isStatic: true, angle: -0.5, render: { fillStyle: '#ffd700' } }));
+        }
     }
-    
-    // 終點漏斗
+
+    for (let y = 1200; y < H - 1000; y += 350) {
+        const type = Math.floor(Math.random() * 8);
+        const xCenter = W / 2;
+        const safeX = OBSTACLE_SAFE_GAP + Math.random() * (W - 2 * OBSTACLE_SAFE_GAP);
+
+        if (type === 0) { 
+            const rollerR = 35;
+            const roller = Bodies.circle(safeX, y, rollerR, { isStatic: true, render: { fillStyle: '#300', strokeStyle: '#ffd700', lineWidth: 4 } });
+            obs.push(roller);
+            Events.on(engine, 'beforeUpdate', () => Body.setAngle(roller, roller.angle + 0.15));
+        } else if (type === 1) { 
+            const gL = Bodies.rectangle(xCenter - 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ff3333' } });
+            const gR = Bodies.rectangle(xCenter + 90, y, 100, 15, { isStatic: true, render: { fillStyle: '#ff3333' } });
+            obs.push(gL, gR);
+            Events.on(engine, 'beforeUpdate', () => {
+                const move = Math.sin(engine.timing.timestamp * 0.003) * 60;
+                Body.setPosition(gL, { x: xCenter - 120 + move, y: y });
+                Body.setPosition(gR, { x: xCenter + 120 - move, y: y });
+            });
+        } else if (type === 2) { 
+            const star = Bodies.rectangle(xCenter, y, 170, 15, { chamfer: { radius: 7 }, render: { fillStyle: '#ffd700' } });
+            obs.push(star, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: star, stiffness: 1 }));
+            const spd = (0.05 + Math.random() * 0.1) * (Math.random() > 0.5 ? 1 : -1);
+            Events.on(engine, 'beforeUpdate', () => Body.setAngularVelocity(star, spd));
+        } else if (type === 3) { 
+            const side = Math.random() > 0.5;
+            obs.push(Bodies.rectangle(side ? 100 : 300, y, 180, 20, { isStatic: true, angle: side ? 0.4 : -0.4, restitution: 2.5, render: { fillStyle: '#ff9900' } }));
+        } else if (type === 4) { 
+            const dots = 3;
+            const spacing = W / (dots + 1);
+            for(let i=1; i<=dots; i++) obs.push(Bodies.circle(i * spacing, y, 12, { isStatic: true, render: { fillStyle: '#600' } }));
+        } else if (type === 5) { 
+            const tri = Bodies.polygon(safeX, y, 3, 48, { isStatic: true, render: { fillStyle: '#ff3333' } });
+            obs.push(tri);
+            Events.on(engine, 'beforeUpdate', () => Body.setAngle(tri, tri.angle - 0.08));
+        } else if (type === 6) { 
+            const wall = Bodies.rectangle(xCenter, y, 140, 40, { isStatic: true, render: { fillStyle: '#ffd700' } });
+            obs.push(wall);
+            Events.on(engine, 'beforeUpdate', () => Body.setPosition(wall, { x: xCenter + Math.sin(engine.timing.timestamp * 0.002) * 100, y: y }));
+        } else { 
+            const plank = Bodies.rectangle(xCenter, y, 240, 15, { chamfer: { radius: 5 }, render: { fillStyle: '#600' } });
+            obs.push(plank, Constraint.create({ pointA: { x: xCenter, y: y }, bodyB: plank, stiffness: 0.05 }));
+        }
+    }
+
     obs.push(
         Bodies.rectangle(50, H-600, 250, 40, { isStatic: true, angle: 0.8, render: { fillStyle: '#ffd700' } }),
         Bodies.rectangle(350, H-600, 250, 40, { isStatic: true, angle: -0.8, render: { fillStyle: '#ffd700' } })
@@ -138,12 +197,15 @@ function init() {
     Events.on(render, 'afterRender', () => {
         const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
         if (!balls.length) {
-            render.bounds.min.y = Math.max(0, CONTAINER_Y - render.options.height/2);
-            render.bounds.max.y = render.bounds.min.y + render.options.height;
+            const vh = render.options.height;
+            render.bounds.min.y = Math.max(0, CONTAINER_Y - vh/2);
+            render.bounds.max.y = render.bounds.min.y + vh;
             return;
         }
 
-        if (grandContainer) Body.setAngle(grandContainer, grandContainer.angle + 0.12);
+        if (grandContainer) {
+            Body.setAngle(grandContainer, grandContainer.angle + 0.12);
+        }
 
         const sorted = [...balls].sort((a, b) => b.position.y - a.position.y);
         document.getElementById('rank-list').innerHTML = sorted.slice(0, 3).map((b, i) => `
@@ -154,16 +216,19 @@ function init() {
             </div>
         `).join('');
         
+        const vh = render.options.height;
         let focusY = isGaming ? sorted[0].position.y : CONTAINER_Y;
-        let ty = Math.min(Math.max(0, focusY - render.options.height/2), H - render.options.height);
-        render.bounds.min.y = ty; render.bounds.max.y = ty + render.options.height;
+        let ty = Math.min(Math.max(0, focusY - vh/2), H - vh);
+        render.bounds.min.y = ty; render.bounds.max.y = ty + vh;
+        render.bounds.min.x = 0; render.bounds.max.x = W;
     });
 
     Events.on(engine, 'collisionStart', (e) => {
         e.pairs.forEach(p => {
-            const b = p.bodyA.label === 'p' ? p.bodyA : (p.bodyB.label === 'p' ? p.bodyB : null);
-            const isGoal = p.bodyA.label === 'goal' || p.bodyB.label === 'goal';
-            if (isGoal && b && isGaming) { isGaming = false; showWin(b); }
+            if ((p.bodyA.label === 'goal' || p.bodyB.label === 'goal') && isGaming) {
+                const b = p.bodyA.label === 'p' ? p.bodyA : (p.bodyB.label === 'p' ? p.bodyB : null);
+                if (b) { isGaming = false; showWin(b); }
+            }
         });
     });
 
@@ -171,20 +236,28 @@ function init() {
 }
 
 function createGrandContainer() {
-    const segments = 16, radius = 130, centerX = 200, centerY = CONTAINER_Y, parts = [];
+    const segments = 16;
+    const radius = 130;
+    const centerX = 200, centerY = CONTAINER_Y;
+    const parts = [];
     for (let i = 0; i < segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
-        parts.push(Bodies.rectangle(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius, 60, 10, {
-            isStatic: true, angle: angle + Math.PI / 2, render: { fillStyle: '#ffd700', opacity: 0.6 }
-        }));
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        const part = Bodies.rectangle(x, y, 60, 10, {
+            isStatic: true,
+            angle: angle + Math.PI / 2,
+            render: { fillStyle: '#ffd700', opacity: 0.6 }
+        });
+        parts.push(part);
     }
-    grandContainer = Body.create({ parts, isStatic: true });
+    grandContainer = Body.create({ parts: parts, isStatic: true });
     Composite.add(engine.world, grandContainer);
 }
 
-// 關鍵修正：同步更新名稱的函數
+// 新增同步更新名稱的函數
 function updatePlayerName(id, newName) {
-    const p = players.find(x => x.id === id);
+    const p = players.find(player => player.id === id);
     if (p) p.name = newName;
     
     // 同步更新物理世界中的球體屬性
@@ -202,8 +275,9 @@ async function prepImg(file) {
                 const c = document.createElement('canvas');
                 c.width = c.height = 300;
                 const x = c.getContext('2d');
+                const s = Math.min(img.width, img.height);
                 x.beginPath(); x.arc(150, 150, 150, 0, Math.PI*2); x.clip();
-                x.drawImage(img, 0, 0, img.width, img.height, 0, 0, 300, 300);
+                x.drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, 300, 300);
                 res(c.toDataURL());
             };
             img.src = e.target.result;
@@ -214,14 +288,14 @@ async function prepImg(file) {
 
 document.getElementById('file-input').addEventListener('change', async (e) => {
     for (let f of Array.from(e.target.files)) {
-        const url = await prepImg(f), name = f.name.split('.')[0], id = Date.now() + Math.random();
+        const url = await prepImg(f), name = f.name.split('.')[0], id = Math.random();
         players.push({ id, url, name });
         
-        const b = Bodies.circle(200, CONTAINER_Y, BALL_R, {
+        const b = Bodies.circle(200 + (Math.random()-0.5)*50, CONTAINER_Y + (Math.random()-0.5)*50, BALL_R, {
             restitution: 0.6, friction: 0.01, label: 'p',
             render: { sprite: { texture: url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
         });
-        b.pName = name; b.pUrl = url; b.pId = id; // 綁定 ID
+        b.pName = name; b.pUrl = url; b.pId = id; // 給球體一個 id
         Composite.add(engine.world, b);
 
         const d = document.createElement('div');
@@ -236,8 +310,14 @@ document.getElementById('btn-start').addEventListener('click', () => {
     if (!grandContainer) return;
     isGaming = true; 
     document.getElementById('ui-panel').style.display = 'none';
+    
     Composite.remove(engine.world, grandContainer);
     grandContainer = null;
+
+    const balls = Composite.allBodies(engine.world).filter(b => b.label === 'p');
+    balls.forEach(b => {
+        Body.applyForce(b, b.position, { x: (Math.random()-0.5)*0.05, y: (Math.random()-0.5)*0.05 });
+    });
 });
 
 function showWin(b) {
@@ -248,13 +328,16 @@ function showWin(b) {
 
 function resetGame() {
     Composite.remove(engine.world, Composite.allBodies(engine.world).filter(b => b.label === 'p'));
+    if (grandContainer) Composite.remove(engine.world, grandContainer);
+    
     document.getElementById('win-popup').style.display = 'none';
     document.getElementById('ui-panel').style.display = 'block';
     isGaming = false;
-    if (!grandContainer) createGrandContainer();
+    
+    createGrandContainer();
     
     players.forEach(p => {
-        const b = Bodies.circle(200, CONTAINER_Y, BALL_R, {
+        const b = Bodies.circle(200 + (Math.random()-0.5)*50, CONTAINER_Y + (Math.random()-0.5)*50, BALL_R, {
             restitution: 0.6, friction: 0.01, label: 'p',
             render: { sprite: { texture: p.url, xScale: (BALL_R*2)/300, yScale: (BALL_R*2)/300 } }
         });
